@@ -43,7 +43,7 @@ rec_coordinates[:, 0] = 980.    # Receiver depth
 geometry1 = AcquisitionGeometry(model1, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
 geometry0 = AcquisitionGeometry(model0, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
 
-client = Client(processes=False)
+# client = Client(processes=False)
 stride = 1
 obs = fm_multi(geometry1, save=False, dt=stride)
 
@@ -52,7 +52,9 @@ qWmetric1d = qWasserstein(gamma=1.1, method='1d')
 bfm_solver = bfm(shape=[obs[0].data.shape[1], obs[0].data.shape[0]], 
 				num_steps=10, step_scale=8.)
 qWmetric2d = qWasserstein(gamma=1.1, method='2d', bfm_solver=bfm_solver)
-misfit_func = qWmetric1d#least_square
+
+#misfit_func = least_square
+misfit_func = qWmetric1d
 
 f, g = fwi_obj_multi(geometry0, obs, misfit_func)
 
