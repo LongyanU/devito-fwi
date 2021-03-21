@@ -45,6 +45,9 @@ class qWasserstein(object):
 	def _1d_calculator(self, f, g):
 		"""Only works for 1d signal
 		"""
+		shape = f.shape
+		f = np.squeeze(f)
+		g = np.squeeze(g)
 		mass = f.sum()
 		mu = f / f.sum()
 		nu = g / g.sum()
@@ -58,8 +61,8 @@ class qWasserstein(object):
 		loss = .5 * ((t - T)**2 * mu).sum()
 		# gradient of W2 w.r.t. f
 		grad = np.cumsum(t - T) - (t - T).sum()
-		grad = (grad - (grad * f).sum()) / mass
-		return loss, grad
+		grad = (grad - (grad * mu).sum()) / mass
+		return loss, grad.reshape(shape)
 
 	def _2d_calculator(self, f, g):
 		"""The bfm has built-in normalizing method, so we dont have to
@@ -75,6 +78,12 @@ class qWasserstein(object):
 
 	def __call__(self, f, g):
 		shape = f.shape
+		if(len(shape)==1):
+			ntr = 1
+		else:
+			ntr = shape[1]
+		if self.method == '2d' and ntr <= 1:
+			raise ValueError("Can not use 2d method for 1D input.")
 		if self.method == '2d' and self.bfm is None:
 			# If self.bfm is not set up yet, set it in default
 			self.bfm = bfm(shape=(shape[1], shape[0]))
@@ -83,9 +92,12 @@ class qWasserstein(object):
 		loss = 0
 		grad = np.zeros(shape)
 		if self.method == '1d':
-			for i in range(shape[1]):
-				value, grad[:, i] = self._1d_calculator(mu[:, i], nu[:, i])
-				loss += value
+			if ntr > 1:
+				for i in range(ntr):
+					value, grad[:, i] = self._1d_calculator(mu[:, i], nu[:, i])
+					loss += value
+			else:
+				loss, grad = self._1d_calculator(mu, nu)
 		elif self.method == '2d':
 			loss, grad = self._2d_calculator(mu, nu)
 
