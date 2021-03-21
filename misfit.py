@@ -9,28 +9,29 @@ def least_square(x, y):
 	return fval, residal
 
 class qWasserstein(object):
-	def __init__(self, transform='linear', gamma=1.0, method='1d'):
+	def __init__(self, trans_type='linear', gamma=1.0, method='1d', bfm_solver=None):
 		self.gamma = gamma
 		assert method in ['1d', '2d']
 		self.method = method
-		self.bfm = None
+		self.bfm = bfm_solver
+		self.trans_type = trans_type
 	def _transform(self, f, g):
 		c = 0
 		min_value = min(f.min(), g.min())
-		if self.transform == 'linear':
+		if self.trans_type == 'linear':
 			mu, nu = f, g
 			c = -min_value if min_value<0 else 0
 			c = c * self.gamma
 			d = np.ones(f.shape)
-		elif self.transform == 'square':
+		elif self.trans_type == 'square':
 			mu = f * f
 			nu = g * g
 			d = 2 * f
-		elif self.transform == 'exp':
+		elif self.trans_type == 'exp':
 			mu = np.exp(self.gamma*f)
 			nu = np.exp(self.gamma*g)
 			d = self.gamma * mu
-		elif self.transform == 'softplus':
+		elif self.trans_type == 'softplus':
 			mu = np.log(np.exp(self.gamma*f) + 1)
 			nu = np.log(np.exp(self.gamma*g) + 1)
 			d = gamma / np.exp(-self.gamma*f)
@@ -41,17 +42,13 @@ class qWasserstein(object):
 		nu = nu + c
 		return mu, nu, d
 
-	def _normalize(self, f, g):
-
-		mass = f.sum()/f.size
-		mu = f.size * f/f.sum()
-		nu = g.size * g/g.sum()
-		return mu, nu, mass
-
 	def _1d_calculator(self, f, g):
 		"""Only works for 1d signal
 		"""
-		mu, nu, mass = self._normalize(f, g)
+		mass = f.sum()
+		mu = f / f.sum()
+		nu = g / g.sum()
+
 		t = np.linspace(0, 1, mu.size)
 		# Cumulative
 		F = np.cumsum(mu)
@@ -75,9 +72,6 @@ class qWasserstein(object):
 		loss, grad = self.bfm.gradient(f, g)
 
 		return loss, grad/mass
-
-	def _set_bfm(self, bfmInstance):
-		self.bfm = bfmInstance
 
 	def __call__(self, f, g):
 		shape = f.shape

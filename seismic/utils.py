@@ -101,8 +101,8 @@ class AcquisitionGeometry(Pickable):
 
     @property
     def model(self):
-        warning("Model is kept for backward compatibility but should not be"
-                "obtained from the geometry")
+        #warning("Model is kept for backward compatibility but should not be"
+        #        "obtained from the geometry")
         return self._model
 
     @property
