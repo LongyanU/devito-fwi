@@ -18,7 +18,7 @@ space_order = 6
 nbl = 40
 free_surface = False
 dt = 2.
-precond = False
+precond = True
 
 true_vp = np.fromfile("./model_data/SMARMN/vp.true", dtype=np.float32).reshape(shape)/1000
 smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth1", dtype=np.float32).reshape(shape)/1000
@@ -63,7 +63,8 @@ obs = fm_multi(geometry1, save=False)
 #print(obs[2].data.shape)
 #plot_shotrecord(obs[2].data, true_model, t0, tn)
 
-filt_func = Filter(filter_type='highpass', freqmin=2, df=1000/resample_dt, axis=-2)
+filt_func = Filter(filter_type='highpass', freqmin=2, 
+			corners=10, df=1000/resample_dt, axis=-2)
 
 #filted_obs = filt_func(obs[1].data)
 #plot_shotrecord(filted_obs, true_model, t0, tn)
@@ -77,9 +78,9 @@ misfit_func = least_square
 #misfit_func = qWmetric2d
 
 # Gradient check
-# f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
-# 				filt_func)
-# plot_image(g.reshape(shape), cmap='cividis')
+f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
+				filt_func)
+plot_image(g.reshape(shape), cmap='cividis')
 
 model_err = []
 def fwi_callback(xk):
@@ -94,18 +95,26 @@ bounds = [(1.0/vmax**2, 1.0/vmin**2) for _ in range(np.prod(shape))]    # in [s^
 m0 = 1./(smooth_vp.reshape(-1).astype(np.float64))**2
 
 # FWI with L-BFGS
-ftol = 1e-20
+ftol = 2e-9 # converge when ftol <= _factor * EPSMCH
 maxiter = 10
-maxls = 10
-gtol = 1e-5
-stepsize = 0.01
+maxls = 5
+gtol = 1e-6
+stepsize = 1e-8 # minimize default step size
+"""
+scipy.optimize.minimize(fun, x0, args=(), method='L-BFGS-B', jac=None, 
+	bounds=None, tol=None, callback=None, 
+	options={'disp': None, 'maxcor': 10, 'ftol': 2.220446049250313e-09, 
+	'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 
+	'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
+"""
+
 result = optimize.minimize(fwi_loss, m0, 
 			args=(geometry0, obs, misfit_func, filt_func, bathy_mask, precond), 
 			method='L-BFGS-B', jac=True, 
     		callback=fwi_callback, bounds=bounds, 
     		options={'ftol':ftol, 'maxiter':maxiter, 'disp':True,
     				'eps':stepsize,
-    				'maxls':5, 'gtol':gtol, 'iprint':1,
+    				'maxls':maxls, 'gtol':gtol, 'iprint':1,
     		})
 
 # Plot FWI result

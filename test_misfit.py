@@ -1,6 +1,8 @@
 from seismic import demo_model, AcquisitionGeometry, Receiver
+from seismic import plot_shotrecord, plot_velocity, plot_image
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from fwi import fm_single
 from misfit import qWasserstein
@@ -16,7 +18,7 @@ def wavelet(dt, n, freq, delay):
 	return y.reshape(n, 1)
 
 w1d = qWasserstein(trans_type='linear', gamma=1.01, method='1d')
-bfm_solver = bfm(num_steps=10, step_scale=1., verbose=True)
+bfm_solver = bfm(num_steps=10, step_scale=8., verbose=True)
 w2d = qWasserstein(trans_type='linear', gamma=1.01, method='2d', bfm_solver=bfm_solver)
 
 dt = 0.001
@@ -34,8 +36,8 @@ print(loss)
 f2 = np.tile(f, (1, ntr))
 g2 = np.tile(g, (1, ntr))
 
-loss2, grad2 = w2d(f2, g2)
-print(loss2)
+# loss2, grad2 = w2d(f2, g2)
+# print(loss2)
 
 # plt.imshow(grad2, aspect=ntr/nt)
 # plt.show()
@@ -44,52 +46,32 @@ print(loss2)
 # plt.plot(grad2[:, int(ntr/2)], 'r')
 # plt.show()
 
-# Set up velocity model
-shape = (101, 101)      # Number of grid points (nx, nz).
-spacing = (10., 10.)    # Grid spacing in m. The domain size is now 1km by 1km.
-origin = (0, 0)         # Need origin to define relative source and receiver locations.
-nbl = 40
+shape = (410, 101)
+data1 = np.fromfile('./syn1', dtype=np.float32).reshape(shape)
+data2 = np.fromfile('./obs1', dtype=np.float32).reshape(shape)
 
-# True model
-model1 = demo_model('circle-isotropic', vp_circle=3.0, vp_background=2.5,
-    origin=origin, shape=shape, spacing=spacing, nbl=nbl)
-print(model1.critical_dt)
-# Initial model
-model0 = demo_model('circle-isotropic', vp_circle=2.5, vp_background=2.5,
-    origin=origin, shape=shape, spacing=spacing, nbl=nbl, grid = model1.grid)
-print(model0.critical_dt)
-#model0._dt = model1.critical_dt
-# Set up acquisiton geometry
-t0 = 0.
-tn = 1000. 
-f0 = 0.010
+plt.imshow(data1, aspect=shape[1]/shape[0])
+plt.show()
 
-# Set up source geometry, but define 5 sources instead of just one.
-nsources = 1
-src_coordinates = np.empty((1, 2))
-src_coordinates[:, 1] = model1.domain_size[0]/2
-src_coordinates[:, 0] = 20.  # Source depth is 20m
+mu, nu, _ = w2d._transform(data1, data2)
+print(mu.min(), nu.min())
 
-# Initialize receivers for synthetic and imaging data
-nreceivers = 101
-rec_coordinates = np.empty((nreceivers, 2))
-rec_coordinates[:, 1] = np.linspace(spacing[0], model1.domain_size[0] - spacing[0], num=nreceivers)
-rec_coordinates[:, 0] = 980.    # Receiver depth
-# Set up geometry objects for observed and predicted data
-geometry1 = AcquisitionGeometry(model1, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
-geometry0 = AcquisitionGeometry(model0, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
-
-# client = Client(processes=False)
-stride = 1
-obs = fm_single(geometry1, save=False, dt=stride)[0]
-
-syn = fm_single(geometry0, save=False, dt=geometry0.dt)[0]
-
-data1 = obs.resample(geometry0.dt).data[:][0:syn.data.shape[0], :]
-
-data2 = syn.data
-
-loss, grad = w2d(data2, data1)
-
+loss, grad = w2d(data1, data2)
 plt.imshow(grad, aspect=grad.shape[1]/grad.shape[0])
 plt.show()
+
+n1 = 512   # x axis
+n2 = 512   # y axis
+
+
+x, y = np.meshgrid(np.linspace(0.5/n1,1-0.5/n1,n1), np.linspace(0.5/n2,1-0.5/n1,n2))
+
+# Initialize densities
+mu = np.zeros((n2, n1))
+nu = np.zeros((n2, n1))
+r = .25
+mu[(x-.25)**2+(y-.25)**2<r**2] = 1
+nu[(x-.75)**2+(y-.75)**2<r**2] = 1
+
+# loss, grad = w2d(mu, nu)
+
