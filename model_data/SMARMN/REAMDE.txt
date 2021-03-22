@@ -1,0 +1,12 @@
+DATA DESCRIPTION
+
+truth model: 
+	Marmousi 106x300, water: 1-7
+smooth1 model:
+	Gaussian filter, sigma = 20
+smooth2 model:
+	Gaussian filter, sigma = 30
+smooth3 model:
+	Gaussian filter, sigma = 40
+
+minimum value:1500 m/s

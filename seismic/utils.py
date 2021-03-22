@@ -83,6 +83,8 @@ class AcquisitionGeometry(Pickable):
         self._t0 = t0
         self._tn = tn
 
+        self._src_data = kwargs.get('src_data', None)
+
     def resample(self, dt):
         self._dt = dt
         return self

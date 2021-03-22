@@ -18,11 +18,12 @@ nbl = 40
 # True model
 model1 = demo_model('circle-isotropic', vp_circle=3.0, vp_background=2.5,
     origin=origin, shape=shape, spacing=spacing, nbl=nbl)
-
+print(model1.critical_dt)
 # Initial model
 model0 = demo_model('circle-isotropic', vp_circle=2.5, vp_background=2.5,
     origin=origin, shape=shape, spacing=spacing, nbl=nbl, grid = model1.grid)
-model0._dt = model1.critical_dt
+print(model0.critical_dt)
+#model0._dt = model1.critical_dt
 # Set up acquisiton geometry
 t0 = 0.
 tn = 1000. 
@@ -47,17 +48,29 @@ geometry0 = AcquisitionGeometry(model0, rec_coordinates, src_coordinates, t0, tn
 stride = 1
 obs = fm_multi(geometry1, save=False, dt=stride)
 
+syn = fm_multi(geometry0, save=False, dt=geometry0.dt)
+
+data1 = obs[2].resample(geometry0.dt).data[:][0:syn[2].data.shape[0], :]
+
+data2 = syn[2].data
+print(data1.shape)
+print(data2.shape)
+data1.tofile('obs1')
+data2.tofile('syn1')
+
+
 #plot_shotrecord(obs[2].data, model1, t0, tn)
-qWmetric1d = qWasserstein(gamma=1.1, method='1d')
-bfm_solver = bfm(shape=[obs[0].data.shape[1], obs[0].data.shape[0]], 
-				num_steps=10, step_scale=8.)
-qWmetric2d = qWasserstein(gamma=1.1, method='2d', bfm_solver=bfm_solver)
+#qWmetric1d = qWasserstein(gamma=1.01, method='1d')
+bfm_solver = bfm(num_steps=10, step_scale=1.)
+qWmetric2d = qWasserstein(gamma=1.01, method='2d', bfm_solver=bfm_solver)
 
 #misfit_func = least_square
-misfit_func = qWmetric1d
+#misfit_func = qWmetric1d
+misfit_func = qWmetric2d
 
-f, g = fwi_obj_multi(geometry0, obs, misfit_func)
+f, g, res = fwi_obj_multi(geometry0, obs, misfit_func)
 
+plot_shotrecord(res[2].data, model0, t0, tn)
 plot_image(g.reshape(model1.shape), cmap='cividis')
 
 model_err = []

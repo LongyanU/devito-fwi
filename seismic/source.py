@@ -242,7 +242,7 @@ class WaveletSource(PointSource):
         plt.show()
 
     # Pickling support
-    _pickle_kwargs = PointSource._pickle_kwargs + ['f0', 'a', 'f0']
+    _pickle_kwargs = PointSource._pickle_kwargs + ['f0', 'a', 't0']
 
 
 class RickerSource(WaveletSource):

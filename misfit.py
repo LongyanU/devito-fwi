@@ -15,6 +15,7 @@ class qWasserstein(object):
 		self.method = method
 		self.bfm = bfm_solver
 		self.trans_type = trans_type
+		
 	def _transform(self, f, g):
 		c = 0
 		min_value = min(f.min(), g.min())
