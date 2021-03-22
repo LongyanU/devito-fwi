@@ -16,7 +16,6 @@ class bfm(object):
 	def __init__(self, num_steps=10, step_scale=8., shape=None, verbose=False):
 		self.num_steps = num_steps
 		self.step_scale = step_scale
-		self.orig_dtype = np.float64
 		self.upper = .75
 		self.lower = .25
 		self.scale_down = .8
@@ -137,4 +136,4 @@ class bfm(object):
 		value, _, psi = self.solve()
 		grad = psi - (psi * self.mu).sum()/psi.size
 
-		return value, grad.astype(self.orig_dtype)
+		return value, grad

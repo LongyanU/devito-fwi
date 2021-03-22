@@ -93,7 +93,8 @@ def fm_multi_parallel(client, geometry, save=False, dt=4.):
 
 	return shots
 
-def fwi_obj_single(geometry, obs, misfit_func, filter_func=None, dt=4):
+def fwi_obj_single(geometry, obs, misfit_func, 
+			filter_func=None, dt=4):
 	grad = Function(name="grad", grid=geometry.model.grid)
 	residual = Receiver(name="rec", grid=geometry.model.grid, 
 				time_range=geometry.time_axis, 
@@ -102,6 +103,7 @@ def fwi_obj_single(geometry, obs, misfit_func, filter_func=None, dt=4):
 	dt = geometry.dt
 	# predicted data and residual
 	pred, wfd = solver.forward(vp=geometry.model.vp, save=True)[0:2]
+
 	if filter_func is not None:
 		syn_data = filter_func(pred.resample(dt).data)
 		obs_data = filter_func(obs.resample(dt).data[:][0:syn_data.shape[0], :]) 
@@ -117,45 +119,64 @@ def fwi_obj_single(geometry, obs, misfit_func, filter_func=None, dt=4):
 	nbl = geometry.model.nbl
 	crop_grad = np.array(grad.data[:])[nbl:-nbl, nbl:-nbl]
 
-	return fval, crop_grad, residual
+	return fval, crop_grad, residual, wfd
 
-def fwi_obj_multi(geometry, obs, misfit_func, filter_func=None, dt=4.):
+def fwi_obj_multi(geometry, obs, misfit_func, 
+			filter_func=None, dt=4., 
+			gradient_mask=None, precond=True):
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
+	illum = np.zeros(geometry.model.shape)
+	nbl = geometry.model.nbl
 	for i in range(geometry.nsrc):
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type)
-		fval_, grad_, _ = fwi_obj_single(geom_i, obs[i], misfit_func, filter_func, dt)
+		fval_, grad_, _, wfd_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
+								filter_func, dt)
 		fval += fval_
 		grad += grad_
-
+		illum += (wfd_.data * wfd_.data).sum(axis=0)[nbl:-nbl, nbl:-nbl]
+	if precond:
+		grad  /= np.sqrt(illum + 1e-30)
 	return fval, grad
 
-def fwi_obj_multi_parallel(client, geometry, obs, misfit_func, filter_func=None, dt=4.):
+def fwi_obj_multi_parallel(client, geometry, obs, misfit_func, 
+			filter_func=None, dt=4., 
+			gradient_mask=None, precond=True):
 	futures = []
 	for i in range(geometry.nsrc):
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type)
-		futures.append(client.submit(fwi_obj_single, geom_i, obs[i], misfit_func, dt))
+		futures.append(client.submit(fwi_obj_single, geom_i, obs[i], 
+							misfit_func, dt, gradient_mask))
 	wait(futures)
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
+	illum = np.zeros(geometry.model.shape)
+	nbl = geometry.model.nbl	
 	for i in range(geometry.nsrc):
 		fval += futures[i].result()[0]
 		grad += futures[i].result()[1]
+		wfd_ = futures[i].result()[3]
+		illum += (wfd_.data * wfd_.data).sum(axis=0)[nbl:-nbl, nbl:-nbl]
+	if precond:
+		grad  /= np.sqrt(illum + 1e-30)	
 
 	return fval, grad
 
-def fwi_loss(x, geometry, obs, misfit_func, filter_func=None, dt=4.):
+def fwi_loss(x, geometry, obs, misfit_func, 
+		filter_func=None, dt=4., 
+		gradient_mask=None, precond=True):
 	# Convert x to velocity
 	v = 1. / np.sqrt(x.reshape(geometry.model.shape))
 	geometry.model.update('vp', v.reshape(geometry.model.shape))
 	
-	fval, grad = fwi_obj_multi(geometry, obs, misfit_func, filter_func, dt)
+	fval, grad = fwi_obj_multi(geometry, obs, misfit_func, 
+						filter_func, dt, gradient_mask, precond)
 
 	return fval, grad.flatten().astype(np.float64)
 
