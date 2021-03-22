@@ -29,7 +29,7 @@ def seismic_filter(data, filter_type: str, freqmin=None, freqmax=None,
 
 class Filter(object):
 	def __init__(self, filter_type: str, freqmin=None, freqmax=None, 
-				df=None, corners=16, zerophase=False, axis=-1):
+				df=None, corners=10, zerophase=False, axis=-1):
 		self.filter_type = filter_type
 		self.freqmin = freqmin
 		self.freqmax = freqmax
@@ -107,7 +107,7 @@ def fwi_obj_single(geometry, obs, misfit_func,
 		obs_data = filter_func(obs.data) 
 	else:
 		syn_data = pred.data
-		obs_data = obs.data[:]
+		obs_data = obs.data
 	fval, residual_data = misfit_func(syn_data, obs_data)
 
 	residual = Receiver(name="rec", grid=geometry.model.grid, 
