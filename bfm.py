@@ -16,7 +16,7 @@ class bfm(object):
 	def __init__(self, num_steps=10, step_scale=8., shape=None, verbose=False):
 		self.num_steps = num_steps
 		self.step_scale = step_scale
-
+		self.orig_dtype = np.float64
 		self.upper = .75
 		self.lower = .25
 		self.scale_down = .8
@@ -41,8 +41,9 @@ class bfm(object):
 							np.linspace(.5/self.shape[1], 1-.5/self.shape[1], self.shape[1]))
 
 	def setup(self, f, g):
-		self.mu = f
-		self.nu = g
+		self.orig_dtype = f.dtype
+		self.mu = f.astype(np.float64)
+		self.nu = g.astype(np.float64)
 		if self.shape is None or self.shape[0] != f.shape[1]:
 			self.shape = (f.shape[1], f.shape[0])
 			self._init()
@@ -136,4 +137,4 @@ class bfm(object):
 		value, _, psi = self.solve()
 		grad = psi - (psi * self.mu).sum()/psi.size
 
-		return value, grad
+		return value, grad.astype(self.orig_dtype)
