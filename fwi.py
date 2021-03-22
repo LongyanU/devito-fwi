@@ -51,14 +51,14 @@ def _loss(x, geometry, y, obj_func):
 	# Evaluate objective function
 	fval, grad = obj_func()
 
-def fm_single(geometry, save=False, dt=4.):
+def fm_single(geometry, save=False):
 	"""Modeling function for acoustic function
 	"""
 	solver = AcousticWaveSolver(geometry.model, geometry, space_order=4)
 	data, u = solver.forward(vp=geometry.model.vp, save=save)[0:2]
-	return data.resample(dt), u
+	return data, u
 
-def fm_multi(geometry, save=False, dt=4.):
+def fm_multi(geometry, save=False):
 	"""modeling function for acoustic equation
 	"""
 	shots = []
@@ -68,12 +68,12 @@ def fm_multi(geometry, save=False, dt=4.):
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type)
 		# Call modeling function
-		shot = fm_single(geom_i, save, dt)[0]
+		shot = fm_single(geom_i, save)[0]
 		shots.append(shot)
 
 	return shots
 
-def fm_multi_parallel(client, geometry, save=False, dt=4.):
+def fm_multi_parallel(client, geometry, save=False):
 	"""Parallel modeling function for acoustic equation
 	"""
 	futures = []
@@ -83,7 +83,7 @@ def fm_multi_parallel(client, geometry, save=False, dt=4.):
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type)
 		# Call modeling function
-		futures.append(client.submit(fm_single, geom_i, save, dt))
+		futures.append(client.submit(fm_single, geom_i, save))
 
 	# Wait for all workers to finish and collect shots
 	wait(futures)
@@ -94,23 +94,25 @@ def fm_multi_parallel(client, geometry, save=False, dt=4.):
 	return shots
 
 def fwi_obj_single(geometry, obs, misfit_func, 
-			filter_func=None, dt=4):
+			filter_func=None):
+
 	grad = Function(name="grad", grid=geometry.model.grid)
-	residual = Receiver(name="rec", grid=geometry.model.grid, 
-				time_range=geometry.time_axis, 
-				coordinates=geometry.rec_positions)
+
 	solver = AcousticWaveSolver(geometry.model, geometry, space_order=4)
-	dt = geometry.dt
 	# predicted data and residual
 	pred, wfd = solver.forward(vp=geometry.model.vp, save=True)[0:2]
 
 	if filter_func is not None:
-		syn_data = filter_func(pred.resample(dt).data)
-		obs_data = filter_func(obs.resample(dt).data[:][0:syn_data.shape[0], :]) 
+		syn_data = filter_func(pred.data)
+		obs_data = filter_func(obs.data) 
 	else:
 		syn_data = pred.data
-		obs_data = obs.resample(dt).data[:][0:pred.data.shape[0], :]
+		obs_data = obs.data[:]
 	fval, residual_data = misfit_func(syn_data, obs_data)
+
+	residual = Receiver(name="rec", grid=geometry.model.grid, 
+				time_range=geometry.time_axis, 
+				coordinates=geometry.rec_positions)	
 	residual.data[:] = residual_data[:]
 
 	solver.gradient(rec=residual, u=wfd, vp=geometry.model.vp, grad=grad)
@@ -122,7 +124,7 @@ def fwi_obj_single(geometry, obs, misfit_func,
 	return fval, crop_grad, residual, wfd
 
 def fwi_obj_multi(geometry, obs, misfit_func, 
-			filter_func=None, dt=4., 
+			filter_func=None, 
 			gradient_mask=None, precond=True):
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
@@ -134,7 +136,7 @@ def fwi_obj_multi(geometry, obs, misfit_func,
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type)
 		fval_, grad_, _, wfd_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
-								filter_func, dt)
+								filter_func)
 		fval += fval_
 		grad += grad_
 		illum += (wfd_.data * wfd_.data).sum(axis=0)[nbl:-nbl, nbl:-nbl]
@@ -143,7 +145,7 @@ def fwi_obj_multi(geometry, obs, misfit_func,
 	return fval, grad
 
 def fwi_obj_multi_parallel(client, geometry, obs, misfit_func, 
-			filter_func=None, dt=4., 
+			filter_func=None, 
 			gradient_mask=None, precond=True):
 	futures = []
 	for i in range(geometry.nsrc):
@@ -152,7 +154,7 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type)
 		futures.append(client.submit(fwi_obj_single, geom_i, obs[i], 
-							misfit_func, dt, gradient_mask))
+							misfit_func, gradient_mask))
 	wait(futures)
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
@@ -169,14 +171,14 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 	return fval, grad
 
 def fwi_loss(x, geometry, obs, misfit_func, 
-		filter_func=None, dt=4., 
+		filter_func=None, 
 		gradient_mask=None, precond=True):
 	# Convert x to velocity
 	v = 1. / np.sqrt(x.reshape(geometry.model.shape))
 	geometry.model.update('vp', v.reshape(geometry.model.shape))
 	
 	fval, grad = fwi_obj_multi(geometry, obs, misfit_func, 
-						filter_func, dt, gradient_mask, precond)
+						filter_func, gradient_mask, precond)
 
 	return fval, grad.flatten().astype(np.float64)
 

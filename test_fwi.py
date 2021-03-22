@@ -1,12 +1,12 @@
 from seismic import demo_model, AcquisitionGeometry, Receiver
-from seismic import plot_shotrecord, plot_image
+from seismic import plot_shotrecord, plot_velocity, plot_image
 import numpy as np
 from scipy import optimize
 from distributed import Client, wait, LocalCluster
 from scipy import optimize
 import matplotlib.pyplot as plt
 
-from fwi import fm_multi, fwi_obj_multi, fwi_loss
+from fwi import Filter, fm_multi, fwi_obj_multi, fwi_loss
 from misfit import least_square, qWasserstein
 from bfm import bfm
 # Set up velocity model
@@ -14,87 +14,88 @@ shape = (101, 101)      # Number of grid points (nx, nz).
 spacing = (10., 10.)    # Grid spacing in m. The domain size is now 1km by 1km.
 origin = (0, 0)         # Need origin to define relative source and receiver locations.
 nbl = 40
-
+dt = 1.
+precond = False
 # True model
-model1 = demo_model('circle-isotropic', vp_circle=3.0, vp_background=2.5,
-    origin=origin, shape=shape, spacing=spacing, nbl=nbl)
-print(model1.critical_dt)
+true_model = demo_model('circle-isotropic', vp_circle=3.6, vp_background=3,
+    origin=origin, shape=shape, spacing=spacing, nbl=nbl, dt=dt)
+print(true_model.critical_dt)
 # Initial model
-model0 = demo_model('circle-isotropic', vp_circle=2.5, vp_background=2.5,
-    origin=origin, shape=shape, spacing=spacing, nbl=nbl, grid = model1.grid)
-print(model0.critical_dt)
-#model0._dt = model1.critical_dt
+init_model = demo_model('circle-isotropic', vp_circle=3, vp_background=3,
+    origin=origin, shape=shape, spacing=spacing, nbl=nbl, dt=dt)
+print(init_model.vp.shape)
+bathy_mask = np.ones(shape, dtype=np.float32)
+#init_model._dt = true_model.critical_dt
 # Set up acquisiton geometry
 t0 = 0.
 tn = 1000. 
 f0 = 0.010
-
+resample_dt = 5
 # Set up source geometry, but define 5 sources instead of just one.
 nsources = 5
 src_coordinates = np.empty((nsources, 2))
-src_coordinates[:, 1] = np.linspace(0, model1.domain_size[0], num=nsources)
+src_coordinates[:, 1] = np.linspace(0, true_model.domain_size[0], num=nsources)
 src_coordinates[:, 0] = 20.  # Source depth is 20m
 
 # Initialize receivers for synthetic and imaging data
-nreceivers = 101
+nreceivers = shape[0]
 rec_coordinates = np.empty((nreceivers, 2))
-rec_coordinates[:, 1] = np.linspace(spacing[0], model1.domain_size[0] - spacing[0], num=nreceivers)
+rec_coordinates[:, 1] = np.linspace(spacing[0], true_model.domain_size[0] - spacing[0], num=nreceivers)
 rec_coordinates[:, 0] = 980.    # Receiver depth
 # Set up geometry objects for observed and predicted data
-geometry1 = AcquisitionGeometry(model1, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
-geometry0 = AcquisitionGeometry(model0, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
-
+geometry1 = AcquisitionGeometry(true_model, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
+geometry0 = AcquisitionGeometry(init_model, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
+geometry1.resample(resample_dt)
+geometry0.resample(resample_dt)
 # client = Client(processes=False)
-stride = 1
-obs = fm_multi(geometry1, save=False, dt=stride)
+obs = fm_multi(geometry1, save=False)
+print(obs[0].data.shape)
+filt_func = None#Filter(filter_type='highpass', freqmin=2, df=1000/resample_dt, axis=-2)
 
-syn = fm_multi(geometry0, save=False, dt=geometry0.dt)
-
-data1 = obs[2].resample(geometry0.dt).data[:][0:syn[2].data.shape[0], :]
-
-data2 = syn[2].data
-print(data1.shape)
-print(data2.shape)
-data1.tofile('obs1')
-data2.tofile('syn1')
-
-
-#plot_shotrecord(obs[2].data, model1, t0, tn)
-#qWmetric1d = qWasserstein(gamma=1.01, method='1d')
+#plot_shotrecord(obs[2].data, true_model, t0, tn)
+qWmetric1d = qWasserstein(gamma=1.01, method='1d')
 bfm_solver = bfm(num_steps=10, step_scale=1.)
 qWmetric2d = qWasserstein(gamma=1.01, method='2d', bfm_solver=bfm_solver)
 
-#misfit_func = least_square
+misfit_func = least_square
 #misfit_func = qWmetric1d
-misfit_func = qWmetric2d
+#misfit_func = qWmetric2d
 
-f, g, res = fwi_obj_multi(geometry0, obs, misfit_func)
-
-plot_shotrecord(res[2].data, model0, t0, tn)
-plot_image(g.reshape(model1.shape), cmap='cividis')
+# Gradient check
+# f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
+# 				filt_func)
+# plot_image(g.reshape(shape), cmap='cividis')
 
 model_err = []
 def fwi_callback(xk):
-	nbl = model1.nbl
-	v = model1.vp.data[nbl:-nbl, nbl:-nbl]
+	nbl = true_model.nbl
+	v = true_model.vp.data[nbl:-nbl, nbl:-nbl]
 	m = 1. / (v.reshape(-1).astype(np.float64))**2
 	model_err.append(np.linalg.norm((xk-m)/m))
 
 # Box contraints
-vmin = 1.4    # do not allow velocities slower than water
+vmin = 2.5    # do not allow velocities slower than water
 vmax = 4.0
-bounds = [(1.0/vmax**2, 1.0/vmin**2) for _ in range(np.prod(model0.shape))]    # in [s^2/km^2]
+bounds = [(1.0/vmax**2, 1.0/vmin**2) for _ in range(np.prod(init_model.shape))]    # in [s^2/km^2]
 
 # Initial guess
-v0 = model0.vp.data[model0.nbl:-model0.nbl, model0.nbl:-model0.nbl]
+v0 = init_model.vp.data[init_model.nbl:-init_model.nbl, init_model.nbl:-init_model.nbl]
 m0 = 1.0 / (v0.reshape(-1).astype(np.float64))**2
 
 # FWI with L-BFGS
-ftol = 0.1
+ftol = 1e-2
 maxiter = 10
-result = optimize.minimize(fwi_loss, m0, args=(geometry0, obs, misfit_func), method='L-BFGS-B', jac=True, 
-    callback=fwi_callback, bounds=bounds, options={'ftol':ftol, 'maxiter':maxiter, 'disp':True})
-
+maxls = 10
+gtol = 1e-5
+stepsize = 1e-8 # minimize default step size
+result = optimize.minimize(fwi_loss, m0, 
+			args=(geometry0, obs, misfit_func, filt_func, bathy_mask, precond), 
+			method='L-BFGS-B', jac=True, 
+    		callback=fwi_callback, bounds=bounds, 
+    		options={'ftol':ftol, 'maxiter':maxiter, 'disp':True,
+    				'eps':stepsize,
+    				'maxls':5, 'gtol':gtol, 'iprint':1,
+    		})
 # Plot FWI result
-vp = 1.0/np.sqrt(result['x'].reshape(model1.shape))
-plot_image(vp, vmin=2.5, vmax=3, cmap="cividis")
+vp = 1.0/np.sqrt(result['x'].reshape(true_model.shape))
+plot_image(vp, vmin=vmin, vmax=vmax, cmap="cividis")
