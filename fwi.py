@@ -120,8 +120,7 @@ def fix_source_illumination(geometry, g):
 
 	return g
 
-def fwi_obj_single(geometry, obs, misfit_func, 
-			filter_func=None):
+def fwi_obj_single(geometry, obs, misfit_func, filter_func=None):
 
 	grad = Function(name="grad", grid=geometry.model.grid)
 
@@ -155,8 +154,7 @@ def fwi_obj_single(geometry, obs, misfit_func,
 	return fval, crop_grad, residual, illum
 
 def fwi_obj_multi(geometry, obs, misfit_func, 
-			filter_func=None, 
-			mask=None, precond=True):
+			filter_func=None, mask=None, precond=True):
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
 	illum = np.zeros(geometry.model.shape)
@@ -178,8 +176,7 @@ def fwi_obj_multi(geometry, obs, misfit_func,
 	return fval, grad
 
 def fwi_obj_multi_parallel(client, geometry, obs, misfit_func, 
-			filter_func=None, 
-			mask=None, precond=True):
+			filter_func=None, mask=None, precond=True):
 	futures = []
 	for i in range(geometry.nsrc):
 		# Geometry for current shot
@@ -206,14 +203,13 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 	return fval, grad
 
 def fwi_loss(x, geometry, obs, misfit_func, 
-		filter_func=None, 
-		gradient_mask=None, precond=True):
+		filter_func=None, mask=None, precond=True):
 	# Convert x to velocity
 	v = 1. / np.sqrt(x.reshape(geometry.model.shape))
 	geometry.model.update('vp', v.reshape(geometry.model.shape))
 	
 	fval, grad = fwi_obj_multi(geometry, obs, misfit_func, 
-						filter_func, gradient_mask, precond)
+						filter_func, mask, precond)
 
 	return fval, grad.flatten().astype(np.float64)
 
