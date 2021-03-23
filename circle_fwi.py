@@ -16,10 +16,10 @@ from time import time
 parser = argparse.ArgumentParser(description='Full waveform inversion')
 parser.add_argument('--misfit', type=int, default=0, choices=[0, 1, 2], 
 			help='misfit function type:0=least square/1=1d W2/2=2d W2')
-parser.add_argument('--precond', type=int, default=0, help='apply precondition')
+parser.add_argument('--precond', type=int, default=1, help='apply precondition')
 parser.add_argument('--odir', type=str, default='./result', 
 			help='directory to output result')
-parser.add_argument('--bathy', type=int, default=0, help='apply bathy mask')
+parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
@@ -110,7 +110,7 @@ if __name__=='__main__':
 		f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
 						filt_func, bathy_mask, precond)
 		g.tofile(os.path.join(result_dir, 'circle_1st_grad_'+str(misfit_type)))		
-		plot_image(g.reshape(shape), cmap='cividis', show=False)
+		plot_image(g.reshape(shape), cmap='bwr', show=False)
 		plt.savefig(os.path.join(result_dir, 
 				'circle_1st_grad_'+str(misfit_type)+'.png'), bbox_inches='tight')
 		plt.savefig(os.path.join(result_dir, 
@@ -138,6 +138,7 @@ if __name__=='__main__':
 	maxls = 5
 	gtol = 1e-6
 	stepsize = 1e-8 # minimize default step size
+	L = 10
 	"""
 	scipy.optimize.minimize(fun, x0, args=(), method='L-BFGS-B', jac=None, 
 		bounds=None, tol=None, callback=None, 
@@ -151,7 +152,7 @@ if __name__=='__main__':
 				method='L-BFGS-B', jac=True, 
 	    		callback=fwi_callback, bounds=bounds, 
 	    		options={'ftol':ftol, 'maxiter':maxiter, 'disp':True,
-	    				'eps':stepsize,
+	    				'eps':stepsize, 'maxcor': L,
 	    				'maxls':maxls, 'gtol':gtol, 'iprint':1,
 	    		})
 	toc = time()
