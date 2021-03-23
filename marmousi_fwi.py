@@ -22,7 +22,7 @@ parser.add_argument('--odir', type=str, default='./result',
 parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
-parser.add_argument('--filter', type=int, default=1, help='filtering data')
+parser.add_argument('--filter', type=int, default=0, help='filtering data')
 parser.add_argument('--check-filter', type=int, default=0,
 			help='check the filtered data')
 if __name__=='__main__':
@@ -98,12 +98,12 @@ if __name__=='__main__':
 					corners=6, df=1000/resample_dt, axis=-2)
 
 		if check_filter:
-			filted_obs = filt_func(obs[int(nsource/2)].data)
+			filted_obs = filt_func(obs[int(nsources/2)].data)
 			plot_shotrecord(filted_obs, true_model, t0, tn, show=False)
 			plt.savefig(os.path.join(result_dir, 
 				'marmousi_filtered_data'+'.png'), 
 				bbox_inches='tight')			
-
+			plt.clf()
 	qWmetric1d = qWasserstein(gamma=1.01, method='1d')
 	bfm_solver = bfm(num_steps=10, step_scale=1.)
 	qWmetric2d = qWasserstein(gamma=1.01, method='2d', bfm_solver=bfm_solver)
@@ -126,7 +126,7 @@ if __name__=='__main__':
 		plt.savefig(os.path.join(result_dir, 
 				'marmousi_1st_grad_'+str(misfit_type)+'.eps'), bbox_inches='tight')
 
-
+		plt.clf()
 	model_err = []
 	def fwi_callback(xk):
 		m = 1. / (true_vp.reshape(-1).astype(np.float64))**2
@@ -191,3 +191,4 @@ if __name__=='__main__':
 			'marmousi_inverted_'+str(misfit_type)+'.png'), bbox_inches='tight')
 	plt.savefig(os.path.join(result_dir, 
 			'marmousi_inverted_'+str(misfit_type)+'.eps'), bbox_inches='tight')
+	plt.clf()

@@ -22,7 +22,7 @@ parser.add_argument('--odir', type=str, default='./result',
 parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
-parser.add_argument('--filter', type=int, default=1, help='filtering data')
+parser.add_argument('--filter', type=int, default=0, help='filtering data')
 parser.add_argument('--check-filter', type=int, default=0,
 			help='check the filtered data')
 if __name__=='__main__':
@@ -38,7 +38,7 @@ if __name__=='__main__':
 	check_gradient = args.check_gradient
 	use_filter = args.filter
 	check_filter = args.check_filter
-	
+
 	# Set up velocity model
 	shape = (101, 101)      # Number of grid points (nx, nz).
 	spacing = (10., 10.)    # Grid spacing in m. The domain size is now 1km by 1km.
@@ -85,15 +85,15 @@ if __name__=='__main__':
 	filt_func = None
 	if use_filter:
 		filt_func = Filter(filter_type='highpass', freqmin=2, 
-					corners=10, df=1000/dt, axis=-2)
+					corners=10, df=1000/resample_dt, axis=-2)
 
 		if check_filter:
-			filted_obs = filt_func(obs[int(nsource/2)].data)
+			filted_obs = filt_func(obs[int(nsources/2)].data)
 			plot_shotrecord(filted_obs, true_model, t0, tn, show=False)
 			plt.savefig(os.path.join(result_dir, 
 				'circle_filtered_data'+'.png'), 
 				bbox_inches='tight')
-
+			plt.clf()
 	qWmetric1d = qWasserstein(gamma=1.01, method='1d')
 	bfm_solver = bfm(num_steps=10, step_scale=1.)
 	qWmetric2d = qWasserstein(gamma=1.01, method='2d', bfm_solver=bfm_solver)
@@ -115,7 +115,7 @@ if __name__=='__main__':
 				'circle_1st_grad_'+str(misfit_type)+'.png'), bbox_inches='tight')
 		plt.savefig(os.path.join(result_dir, 
 				'circle_1st_grad_'+str(misfit_type)+'.eps'), bbox_inches='tight')
-
+		plt.clf()
 	model_err = []
 	def fwi_callback(xk):
 		nbl = true_model.nbl
@@ -185,4 +185,4 @@ if __name__=='__main__':
 			'circle_inverted_'+str(misfit_type)+'.png'), bbox_inches='tight')
 	plt.savefig(os.path.join(result_dir, 
 			'circle_inverted_'+str(misfit_type)+'.eps'), bbox_inches='tight')
-
+	plt.clf()

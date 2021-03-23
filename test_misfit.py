@@ -64,7 +64,7 @@ n1 = 512   # x axis
 n2 = 512   # y axis
 
 
-x, y = np.meshgrid(np.linspace(0.5/n1,1-0.5/n1,n1), np.linspace(0.5/n2,1-0.5/n1,n2))
+x, y = np.meshgrid(np.linspace(0.5/n1,1-0.5/n1,n1), np.linspace(0.5/n2,1-0.5/n2,n2))
 
 # Initialize densities
 mu = np.zeros((n2, n1))
