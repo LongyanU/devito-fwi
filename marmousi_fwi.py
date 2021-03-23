@@ -23,6 +23,8 @@ parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=1, help='filtering data')
+parser.add_argument('--check-filter', type=int, default=0,
+			help='check the filtered data')
 if __name__=='__main__':
 	# Parse argument
 	args = parser.parse_args()
@@ -35,6 +37,7 @@ if __name__=='__main__':
 	use_bathy = args.bathy
 	check_gradient = args.check_gradient
 	use_filter = args.filter
+	check_filter = args.check_filter
 
 	# Setup velocity model
 	shape = (300, 106)      # Number of grid points (nx, nz).
@@ -94,8 +97,12 @@ if __name__=='__main__':
 		filt_func = Filter(filter_type='highpass', freqmin=2, 
 					corners=6, df=1000/resample_dt, axis=-2)
 
-	#filted_obs = filt_func(obs[1].data)
-	#plot_shotrecord(filted_obs, true_model, t0, tn)
+		if check_filter:
+			filted_obs = filt_func(obs[int(nsource/2)].data)
+			plot_shotrecord(filted_obs, true_model, t0, tn, show=False)
+			plt.savefig(os.path.join(result_dir, 
+				'marmousi_filtered_data'+'.png'), 
+				bbox_inches='tight')			
 
 	qWmetric1d = qWasserstein(gamma=1.01, method='1d')
 	bfm_solver = bfm(num_steps=10, step_scale=1.)
