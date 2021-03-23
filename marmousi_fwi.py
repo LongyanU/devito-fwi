@@ -23,8 +23,9 @@ parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
-parser.add_argument('--check-filter', type=int, default=0,
+parser.add_argument('--check-filter', type=int, default=1,
 			help='check the filtered data')
+parser.add_argument('--resample', type=float, default=5., help='resample dt')
 if __name__=='__main__':
 	# Parse argument
 	args = parser.parse_args()
@@ -38,7 +39,7 @@ if __name__=='__main__':
 	check_gradient = args.check_gradient
 	use_filter = args.filter
 	check_filter = args.check_filter
-
+	resample_dt = args.resample
 	# Setup velocity model
 	shape = (300, 106)      # Number of grid points (nx, nz).
 	spacing = (30., 30.)    # Grid spacing in m. The domain size is now 1km by 1km.
@@ -46,10 +47,10 @@ if __name__=='__main__':
 	space_order = 6
 	nbl = 40
 	free_surface = False
-	dt = 3.
+	dt = 2.
 
 	true_vp = np.fromfile("./model_data/SMARMN/vp.true", dtype=np.float32).reshape(shape)/1000
-	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth1", dtype=np.float32).reshape(shape)/1000
+	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth_5", dtype=np.float32).reshape(shape)/1000
 	bathy_mask = np.ones(shape, dtype=np.float32)
 	bathy_mask[:, :7] = 0
 	if not use_bathy:
@@ -66,9 +67,8 @@ if __name__=='__main__':
 	t0 = 0.
 	tn = 4500. 
 	f0 = 0.005
-	resample_dt = 10
 	# Set up source geometry, but define 5 sources instead of just one.
-	nsources = 31
+	nsources = 51
 	src_coordinates = np.empty((nsources, 2))
 	src_coordinates[:, 0] = np.linspace(0, true_model.domain_size[0], num=nsources)
 	src_coordinates[:, -1] = 30.  # Source depth is 20m
@@ -90,8 +90,12 @@ if __name__=='__main__':
 	#plot_velocity(true_model, source=geometry1.src_positions, receiver=geometry1.rec_positions[::4, :])
 
 	obs = fm_multi(geometry1, save=False)
-	#print(obs[2].data.shape)
-	#plot_shotrecord(obs[2].data, true_model, t0, tn)
+
+	plot_shotrecord(obs[int(nsources/2)].data, true_model, t0, tn, show=False)
+	plt.savefig(os.path.join(result_dir, 'marmousi_data'+'.png'), 
+				bbox_inches='tight')
+	plt.clf()
+
 	filt_func = None
 	if use_filter:
 		filt_func = Filter(filter_type='highpass', freqmin=2, 
@@ -133,15 +137,15 @@ if __name__=='__main__':
 		model_err.append(np.linalg.norm((xk-m)/m))
 
 	# Box contraints
-	vmin = 1.4    # do not allow velocities slower than water
-	vmax = 5.0
+	vmin = 1.5    # do not allow velocities slower than water
+	vmax = 5.5
 	bounds = [(1.0/vmax**2, 1.0/vmin**2) for _ in range(np.prod(shape))]    # in [s^2/km^2]
 
 	m0 = 1./(smooth_vp.reshape(-1).astype(np.float64))**2
 
 	# FWI with L-BFGS
 	ftol = 2e-10 # converge when ftol <= _factor * EPSMCH
-	maxiter = 300
+	maxiter = 50
 	maxls = 5
 	gtol = 1e-9
 	stepsize = 1e-8 # minimize default step size
@@ -179,9 +183,10 @@ if __name__=='__main__':
 			for line in file:
 				if line.find('Operator') < 0:
 					useful_info.append(line)
-		with open(os.path.join(result_dir, 'marmousi_optim_info_'+str(misfit_type)+'.txt')) as file:
-			for item in useful_info:
-				f.write("%s\n" % item)
+		file = open(os.path.join(result_dir, "marmousi_optim_info_"+str(misfit_type)+'.txt'), "w")
+		for item in useful_info:
+			file.write("%s\n" % item)
+		file.close()
 		nohup_file = 'marmousi_nohup_'+str(misfit_type)+'.out'
 		os.rename('./nohup.out', nohup_file)
 		shutil.move(nohup_file, os.path.join(result_dir, nohup_file))

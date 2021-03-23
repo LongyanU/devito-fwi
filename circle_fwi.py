@@ -23,7 +23,7 @@ parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
-parser.add_argument('--check-filter', type=int, default=0,
+parser.add_argument('--check-filter', type=int, default=1,
 			help='check the filtered data')
 if __name__=='__main__':
 	# Parse argument
@@ -40,19 +40,20 @@ if __name__=='__main__':
 	check_filter = args.check_filter
 
 	# Set up velocity model
-	shape = (101, 101)      # Number of grid points (nx, nz).
+	shape = (201, 201)      # Number of grid points (nx, nz).
 	spacing = (10., 10.)    # Grid spacing in m. The domain size is now 1km by 1km.
 	origin = (0, 0)         # Need origin to define relative source and receiver locations.
+	space_order = 6
 	nbl = 40
 	dt = 1.
-
+	radius = 60
 	# True model
-	true_model = demo_model('circle-isotropic', vp_circle=3.6, vp_background=3,
-	    origin=origin, shape=shape, spacing=spacing, nbl=nbl, dt=dt)
+	true_model = demo_model('circle-isotropic', vp_circle=3.6, vp_background=3, r=radius,
+	    origin=origin, shape=shape, spacing=spacing, space_order=space_order, nbl=nbl, dt=dt)
 
 	# Initial model
-	init_model = demo_model('circle-isotropic', vp_circle=3, vp_background=3,
-	    origin=origin, shape=shape, spacing=spacing, nbl=nbl, dt=dt)
+	init_model = demo_model('circle-isotropic', vp_circle=3, vp_background=3, r=radius,
+	    origin=origin, shape=shape, spacing=spacing, space_order=space_order, nbl=nbl, dt=dt)
 
 	bathy_mask = np.ones(shape, dtype=np.float32)
 	if not use_bathy:
@@ -73,7 +74,7 @@ if __name__=='__main__':
 	nreceivers = shape[0]
 	rec_coordinates = np.empty((nreceivers, 2))
 	rec_coordinates[:, 1] = np.linspace(spacing[0], true_model.domain_size[0] - spacing[0], num=nreceivers)
-	rec_coordinates[:, 0] = 980.    # Receiver depth
+	rec_coordinates[:, 0] = 1980.    # Receiver depth
 	# Set up geometry objects for observed and predicted data
 	geometry1 = AcquisitionGeometry(true_model, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
 	geometry0 = AcquisitionGeometry(init_model, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
@@ -82,10 +83,15 @@ if __name__=='__main__':
 	# client = Client(processes=False)
 	obs = fm_multi(geometry1, save=False)
 
+	plot_shotrecord(obs[int(nsources/2)].data, true_model, t0, tn, show=False)
+	plt.savefig(os.path.join(result_dir, 'circle_data'+'.png'), 
+				bbox_inches='tight')
+	plt.clf()
+
 	filt_func = None
 	if use_filter:
 		filt_func = Filter(filter_type='highpass', freqmin=2, 
-					corners=10, df=1000/resample_dt, axis=-2)
+					corners=10, df=1000/dt, axis=-2)
 
 		if check_filter:
 			filted_obs = filt_func(obs[int(nsources/2)].data)
@@ -173,9 +179,10 @@ if __name__=='__main__':
 			for line in file:
 				if line.find('Operator') < 0:
 					useful_info.append(line)
-		with open(os.path.join(result_dir, 'circle_optim_info_'+str(misfit_type)+'.txt')) as file:
-			for item in useful_info:
-				f.write("%s\n" % item)
+		file = open(os.path.join(result_dir, "circle_optim_info_"+str(misfit_type)+'.txt'), "w")
+		for item in useful_info:
+			file.write("%s\n" % item)
+		file.close()
 		nohup_file = 'circle_nohup_'+str(misfit_type)+'.out'
 		os.rename('./nohup.out', nohup_file)
 		shutil.move(nohup_file, os.path.join(result_dir, nohup_file))

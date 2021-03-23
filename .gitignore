@@ -116,3 +116,5 @@ dmypy.json
 dask-worker-space/
 
 result/
+
+model_data/**/*.eps
