@@ -147,14 +147,16 @@ def fwi_obj_single(geometry, obs, misfit_func,
 	# Convert to numpy array and remove absorbing boundaries
 	nbl = geometry.model.nbl
 	crop_grad = np.array(grad.data[:])[nbl:-nbl, nbl:-nbl]
-
 	crop_grad = fix_source_illumination(geometry, crop_grad)
 
-	return fval, crop_grad, residual, wfd
+	illum = (wfd.data * wfd.data).sum(axis=0)[nbl:-nbl, nbl:-nbl]
+	illum = fix_source_illumination(geometry, illum)
+
+	return fval, crop_grad, residual, illum
 
 def fwi_obj_multi(geometry, obs, misfit_func, 
 			filter_func=None, 
-			gradient_mask=None, precond=True):
+			mask=None, precond=True):
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
 	illum = np.zeros(geometry.model.shape)
@@ -164,18 +166,20 @@ def fwi_obj_multi(geometry, obs, misfit_func,
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type)
-		fval_, grad_, _, wfd_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
+		fval_, grad_, _, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
 								filter_func)
 		fval += fval_
 		grad += grad_
-		illum += (wfd_.data * wfd_.data).sum(axis=0)[nbl:-nbl, nbl:-nbl]
+		illum += illum_
 	if precond:
 		grad  /= np.sqrt(illum + 1e-30)
+	if mask is not None:
+		grad *= mask 
 	return fval, grad
 
 def fwi_obj_multi_parallel(client, geometry, obs, misfit_func, 
 			filter_func=None, 
-			gradient_mask=None, precond=True):
+			mask=None, precond=True):
 	futures = []
 	for i in range(geometry.nsrc):
 		# Geometry for current shot
@@ -183,7 +187,7 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type)
 		futures.append(client.submit(fwi_obj_single, geom_i, obs[i], 
-							misfit_func, gradient_mask))
+							misfit_func))
 	wait(futures)
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
@@ -192,10 +196,12 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 	for i in range(geometry.nsrc):
 		fval += futures[i].result()[0]
 		grad += futures[i].result()[1]
-		wfd_ = futures[i].result()[3]
-		illum += (wfd_.data * wfd_.data).sum(axis=0)[nbl:-nbl, nbl:-nbl]
+		illum += futures[i].result()[3]
+		
 	if precond:
 		grad  /= np.sqrt(illum + 1e-30)	
+	if mask is not None:
+		grad *= mask
 
 	return fval, grad
 
