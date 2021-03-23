@@ -93,6 +93,33 @@ def fm_multi_parallel(client, geometry, save=False):
 
 	return shots
 
+def fix_source_illumination(geometry, g):
+	if geometry.src_positions.shape[0] > 1:
+		raise ValueError("Only single source valid.")
+	dx, dz = geometry.model.spacing
+	src_pos = geometry.src_positions
+	sx, sz = src_pos[0][0], src_pos[0][1]
+	nx, nz = geometry.model.shape
+	if g.shape != (nx, nz):
+		raise ValueError("Shape does not match!")
+	x = np.arange(0, nx) * dx
+	z = np.arange(0, nz) * dz
+	xx, zz = np.meshgrid(z, x)
+	sigma = dx + dz
+
+	# first source
+	mask = np.exp( -.5*( (xx-sx)**2 + (zz-sz)**2 )/(sigma**2) )
+	g = g * (1. - mask)
+	# then receiver
+	nr = geometry.rec_positions.shape[0]
+	for i in range(nr):
+		rec_pos = geometry.rec_positions[i, :]
+		rx, rz = rec_pos[0], rec_pos[1]
+		mask = np.exp( -.5*( (xx-rx)**2 + (zz-rz)**2 )/(sigma**2) )
+		g = g * (1. - mask)
+
+	return g
+
 def fwi_obj_single(geometry, obs, misfit_func, 
 			filter_func=None):
 
@@ -120,6 +147,8 @@ def fwi_obj_single(geometry, obs, misfit_func,
 	# Convert to numpy array and remove absorbing boundaries
 	nbl = geometry.model.nbl
 	crop_grad = np.array(grad.data[:])[nbl:-nbl, nbl:-nbl]
+
+	crop_grad = fix_source_illumination(geometry, crop_grad)
 
 	return fval, crop_grad, residual, wfd
 
