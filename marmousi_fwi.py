@@ -16,10 +16,10 @@ from time import time
 parser = argparse.ArgumentParser(description='Full waveform inversion')
 parser.add_argument('--misfit', type=int, default=0, choices=[0, 1, 2], 
 			help='misfit function type:0=least square/1=1d W2/2=2d W2')
-parser.add_argument('--precond', type=int, default=1, help='apply precondition')
+parser.add_argument('--precond', type=int, default=0, help='apply precondition')
 parser.add_argument('--odir', type=str, default='./result', 
 			help='directory to output result')
-parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
+parser.add_argument('--bathy', type=int, default=0, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
@@ -49,7 +49,7 @@ if __name__=='__main__':
 	dt = 3.
 
 	true_vp = np.fromfile("./model_data/SMARMN/vp.true", dtype=np.float32).reshape(shape)/1000
-	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth0", dtype=np.float32).reshape(shape)/1000
+	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth1", dtype=np.float32).reshape(shape)/1000
 	bathy_mask = np.ones(shape, dtype=np.float32)
 	bathy_mask[:, :7] = 0
 	if not use_bathy:
@@ -118,7 +118,7 @@ if __name__=='__main__':
 	# Gradient check
 	if check_gradient:
 		f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
-						filt_func, precond=precond)
+						filt_func, bathy_mask, precond)
 		g.tofile(os.path.join(result_dir, 'marmousi_1st_grad_'+str(misfit_type)))
 		plot_image(g.reshape(shape), cmap='cividis', show=False)
 		plt.savefig(os.path.join(result_dir, 
