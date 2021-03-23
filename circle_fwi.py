@@ -10,7 +10,8 @@ from fwi import Filter, fm_multi, fwi_obj_multi, fwi_loss
 from misfit import least_square, qWasserstein
 from bfm import bfm
 
-import argparse, os, time, shutil
+import argparse, os, shutil
+from time import time
 
 parser = argparse.ArgumentParser(description='Full waveform inversion')
 parser.add_argument('--misfit', type=int, default=0, choices=[0, 1, 2], 
@@ -21,7 +22,7 @@ parser.add_argument('--odir', type=str, default='./result',
 parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
-
+parser.add_argument('--filter', type=int, default=1, help='filtering data')
 if __name__=='__main__':
 	# Parse argument
 	args = parser.parse_args()
@@ -77,7 +78,9 @@ if __name__=='__main__':
 	# client = Client(processes=False)
 	obs = fm_multi(geometry1, save=False)
 
-	filt_func = Filter(filter_type='highpass', freqmin=2, 
+	filt_func = None
+	if use_filter:
+		filt_func = Filter(filter_type='highpass', freqmin=2, 
 					corners=10, df=1000/resample_dt, axis=-2)
 
 	# syn = fm_multi(geometry0, save=False)
@@ -103,7 +106,12 @@ if __name__=='__main__':
 	if check_gradient:
 		f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
 						filt_func, precond=precond)
-		plot_image(g.reshape(shape), cmap='cividis')
+		g.tofile(os.path.join(result_dir, 'circle_1st_grad_'+str(misfit_type)))		
+		plot_image(g.reshape(shape), cmap='cividis', show=False)
+		plt.savefig(os.path.join(result_dir, 
+				'circle_1st_grad_'+str(misfit_type)+'.png'), bbox_inches='tight')
+		plt.savefig(os.path.join(result_dir, 
+				'circle_1st_grad_'+str(misfit_type)+'.eps'), bbox_inches='tight')
 
 	model_err = []
 	def fwi_callback(xk):
@@ -134,6 +142,7 @@ if __name__=='__main__':
 		'gtol': 1e-05, 'eps': 1e-08, 'maxfun': 15000, 'maxiter': 15000, 
 		'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
 	"""
+	tic = time()
 	result = optimize.minimize(fwi_loss, m0, 
 				args=(geometry0, obs, misfit_func, filt_func, bathy_mask, precond), 
 				method='L-BFGS-B', jac=True, 
@@ -142,17 +151,21 @@ if __name__=='__main__':
 	    				'eps':stepsize,
 	    				'maxls':maxls, 'gtol':gtol, 'iprint':1,
 	    		})
+	toc = time()
+	print(f'\n Elapsed time: {toc-tic:.2f}s')	
 	# Plot FWI result
 	vp = 1.0/np.sqrt(result['x'].reshape(true_model.shape))
 
 	vp.tofile(os.path.join(result_dir, "circle_result_misfit_"+str(misfit_type)))
 
-	with open(os.path.join(result_dir, "circle_model_err_info_"+str(misfit_type)+'.txt')) as file:
-		for item in model_err:
-			f.write("%s\n" % str(item))
+	file = open(os.path.join(result_dir, "circle_model_err_info_"+str(misfit_type)+'.txt'), "w")
+	for item in model_err:
+		if item is not None:
+			file.write("%s\n" % str(item))
+	file.close()			
 	try:
 		useful_info = []
-		with open('nohup.out', 'rt') as file:
+		with open('./nohup.out', 'r') as file:
 			for line in file:
 				if line.find('Operator') < 0:
 					useful_info.append(line)
@@ -160,9 +173,13 @@ if __name__=='__main__':
 			for item in useful_info:
 				f.write("%s\n" % item)
 		nohup_file = 'circle_nohup_'+str(misfit_type)+'.out'
-		os.rename('nohup.out', nohup_file)
+		os.rename('./nohup.out', nohup_file)
 		shutil.move(nohup_file, os.path.join(result_dir, nohup_file))
 	except:
 		pass
-	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet")
+	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet", show=False)
+	plt.savefig(os.path.join(result_dir, 
+			'circle_inverted_'+str(misfit_type)+'.png'), bbox_inches='tight')
+	plt.savefig(os.path.join(result_dir, 
+			'circle_inverted_'+str(misfit_type)+'.eps'), bbox_inches='tight')
 
