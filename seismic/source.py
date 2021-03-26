@@ -169,26 +169,6 @@ class PointSource(SparseTimeFunction):
         return PointSource(name=self.name, grid=self.grid, data=new_traces,
                            time_range=new_time_range, coordinates=self.coordinates.data)
 
-    def show(self, idx=0, wavelet=None):
-        """
-        Plot the wavelet of the specified source.
-
-        Parameters
-        ----------
-        idx : int
-            Index of the source point for which to plot wavelet.
-        wavelet : ndarray or callable
-            Prescribed wavelet instead of one from this symbol.
-        """
-        wavelet = wavelet or self.data[:, idx]
-        plt.figure()
-        plt.plot(self.time_values, wavelet)
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Amplitude')
-        plt.tick_params()
-        plt.show()
-
-
     # Pickling support
     _pickle_kwargs = SparseTimeFunction._pickle_kwargs + ['time_range']
     _pickle_kwargs.remove('nt')  # `nt` is inferred from `time_range`
@@ -366,6 +346,6 @@ class DGaussSource(WaveletSource):
     @property
     def wavelet(self):
         t0 = self.t0 or 1 / self.f0
-        a = (self.a or 1) * (np.pi * self.f0)**2
+        a = self.a or 1
         time = (self.time_values - t0)
         return -2 * a * time * np.exp(- a * time**2)
