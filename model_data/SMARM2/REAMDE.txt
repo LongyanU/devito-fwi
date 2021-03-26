@@ -1,0 +1,7 @@
+DATA DESCRIPTION
+
+truth model: 
+	Marmousi2 140x340, water: 1-15
+smoth models name are suffixed with gaussian filter sigma
+
+minimum value:1500 m/s
