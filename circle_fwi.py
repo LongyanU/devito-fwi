@@ -1,5 +1,6 @@
 from seismic import demo_model, AcquisitionGeometry, Receiver
 from seismic import plot_shotrecord, plot_velocity, plot_image
+from seismic.wavelet import Ricker, Gabor, DGauss
 import numpy as np
 from scipy import optimize
 from distributed import Client, wait, LocalCluster
@@ -23,8 +24,7 @@ parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
-parser.add_argument('--check-filter', type=int, default=1,
-			help='check the filtered data')
+parser.add_argument('--resample', type=float, default=5., help='resample dt')
 if __name__=='__main__':
 	# Parse argument
 	args = parser.parse_args()
@@ -37,8 +37,7 @@ if __name__=='__main__':
 	use_bathy = args.bathy
 	check_gradient = args.check_gradient
 	use_filter = args.filter
-	check_filter = args.check_filter
-
+	resample_dt = args.resample
 	# Set up velocity model
 	shape = (201, 201)      # Number of grid points (nx, nz).
 	spacing = (10., 10.)    # Grid spacing in m. The domain size is now 1km by 1km.
@@ -75,9 +74,16 @@ if __name__=='__main__':
 	rec_coordinates = np.empty((nreceivers, 2))
 	rec_coordinates[:, 1] = np.linspace(spacing[0], true_model.domain_size[0] - spacing[0], num=nreceivers)
 	rec_coordinates[:, 0] = 1980.    # Receiver depth
+
+	# set up source 
+	src_data = Ricker(t0, tn, dt, f0)
+	if use_filter:
+		filt_func = Filter(filter_type='highpass', freqmin=2, 
+					corners=6, df=1000/dt)
+		src_data = filt_func(src_data)
 	# Set up geometry objects for observed and predicted data
-	geometry1 = AcquisitionGeometry(true_model, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
-	geometry0 = AcquisitionGeometry(init_model, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_type='Ricker')
+	geometry1 = AcquisitionGeometry(true_model, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_data=src_data)
+	geometry0 = AcquisitionGeometry(init_model, rec_coordinates, src_coordinates, t0, tn, f0=f0, src_data=src_data)
 	geometry1.resample(resample_dt)
 	geometry0.resample(resample_dt)
 	# client = Client(processes=False)
@@ -88,18 +94,6 @@ if __name__=='__main__':
 				bbox_inches='tight')
 	plt.clf()
 
-	filt_func = None
-	if use_filter:
-		filt_func = Filter(filter_type='highpass', freqmin=2, 
-					corners=10, df=1000/dt, axis=-2)
-
-		if check_filter:
-			filted_obs = filt_func(obs[int(nsources/2)].data)
-			plot_shotrecord(filted_obs, true_model, t0, tn, show=False)
-			plt.savefig(os.path.join(result_dir, 
-				'circle_filtered_data'+'.png'), 
-				bbox_inches='tight')
-			plt.clf()
 	qWmetric1d = qWasserstein(gamma=1.01, method='1d')
 	bfm_solver = bfm(num_steps=10, step_scale=1.)
 	qWmetric2d = qWasserstein(gamma=1.01, method='2d', bfm_solver=bfm_solver)
@@ -114,7 +108,7 @@ if __name__=='__main__':
 	# Gradient check
 	if check_gradient:
 		f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
-						filt_func, bathy_mask, precond)
+						None, bathy_mask, precond)
 		g.tofile(os.path.join(result_dir, 'circle_1st_grad_'+str(misfit_type)))		
 		plot_image(g.reshape(shape), cmap='bwr', show=False)
 		plt.savefig(os.path.join(result_dir, 
@@ -154,7 +148,7 @@ if __name__=='__main__':
 	"""
 	tic = time()
 	result = optimize.minimize(fwi_loss, m0, 
-				args=(geometry0, obs, misfit_func, filt_func, bathy_mask, precond), 
+				args=(geometry0, obs, misfit_func, None, bathy_mask, precond), 
 				method='L-BFGS-B', jac=True, 
 	    		callback=fwi_callback, bounds=bounds, 
 	    		options={'ftol':ftol, 'maxiter':maxiter, 'disp':True,

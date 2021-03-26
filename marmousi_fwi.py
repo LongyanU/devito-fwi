@@ -1,5 +1,6 @@
 from seismic import Model, AcquisitionGeometry, Receiver
 from seismic import plot_shotrecord, plot_velocity, plot_image
+from seismic.wavelet import Ricker, Gabor, DGauss
 import numpy as np
 from scipy import optimize
 from distributed import Client, wait, LocalCluster
@@ -23,8 +24,6 @@ parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
-parser.add_argument('--check-filter', type=int, default=1,
-			help='check the filtered data')
 parser.add_argument('--resample', type=float, default=5., help='resample dt')
 if __name__=='__main__':
 	# Parse argument
@@ -38,19 +37,18 @@ if __name__=='__main__':
 	use_bathy = args.bathy
 	check_gradient = args.check_gradient
 	use_filter = args.filter
-	check_filter = args.check_filter
 	resample_dt = args.resample
 	# Setup velocity model
 	shape = (300, 106)      # Number of grid points (nx, nz).
 	spacing = (30., 30.)    # Grid spacing in m. The domain size is now 1km by 1km.
 	origin = (0, 0)         # Need origin to define relative source and receiver locations.
-	space_order = 6
+	space_order = 8
 	nbl = 40
 	free_surface = False
-	dt = 2.
+	dt = 3.
 
 	true_vp = np.fromfile("./model_data/SMARMN/vp.true", dtype=np.float32).reshape(shape)/1000
-	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth_5", dtype=np.float32).reshape(shape)/1000
+	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth_20", dtype=np.float32).reshape(shape)/1000
 	bathy_mask = np.ones(shape, dtype=np.float32)
 	bathy_mask[:, :7] = 0
 	if not use_bathy:
@@ -68,7 +66,7 @@ if __name__=='__main__':
 	tn = 4500. 
 	f0 = 0.005
 	# Set up source geometry, but define 5 sources instead of just one.
-	nsources = 51
+	nsources = 21
 	src_coordinates = np.empty((nsources, 2))
 	src_coordinates[:, 0] = np.linspace(0, true_model.domain_size[0], num=nsources)
 	src_coordinates[:, -1] = 30.  # Source depth is 20m
@@ -79,12 +77,16 @@ if __name__=='__main__':
 	rec_coordinates[:, 0] = np.linspace(spacing[0], true_model.domain_size[0] - spacing[0], num=nreceivers)
 	rec_coordinates[:, 1] = 30.    # Receiver depth
 
+	src_data = Ricker(t0, tn, dt, f0)
+	if use_filter:
+		filt_func = Filter(filter_type='highpass', freqmin=2, 
+					corners=6, df=1000/dt)
+		src_data = filt_func(src_data)
 	# Set up geometry objects for observed and predicted data
-
 	geometry1 = AcquisitionGeometry(true_model, rec_coordinates, src_coordinates, t0, tn, 
-					f0=f0, src_type='Ricker')
+					f0=f0, src_data=src_data)
 	geometry0 = AcquisitionGeometry(init_model, rec_coordinates, src_coordinates, t0, tn, 
-					f0=f0, src_type='Ricker')
+					f0=f0, src_data=src_data)
 	geometry1.resample(resample_dt)
 	geometry0.resample(resample_dt)
 	#plot_velocity(true_model, source=geometry1.src_positions, receiver=geometry1.rec_positions[::4, :])
@@ -96,18 +98,6 @@ if __name__=='__main__':
 				bbox_inches='tight')
 	plt.clf()
 
-	filt_func = None
-	if use_filter:
-		filt_func = Filter(filter_type='highpass', freqmin=2, 
-					corners=6, df=1000/resample_dt, axis=-2)
-
-		if check_filter:
-			filted_obs = filt_func(obs[int(nsources/2)].data)
-			plot_shotrecord(filted_obs, true_model, t0, tn, show=False)
-			plt.savefig(os.path.join(result_dir, 
-				'marmousi_filtered_data'+'.png'), 
-				bbox_inches='tight')			
-			plt.clf()
 	qWmetric1d = qWasserstein(gamma=1.01, method='1d')
 	bfm_solver = bfm(num_steps=10, step_scale=1.)
 	qWmetric2d = qWasserstein(gamma=1.01, method='2d', bfm_solver=bfm_solver)
@@ -122,7 +112,7 @@ if __name__=='__main__':
 	# Gradient check
 	if check_gradient:
 		f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
-						filt_func, bathy_mask, precond)
+						None, bathy_mask, precond)
 		g.tofile(os.path.join(result_dir, 'marmousi_1st_grad_'+str(misfit_type)))
 		plot_image(g.reshape(shape), cmap='bwr', show=False)
 		plt.savefig(os.path.join(result_dir, 
@@ -138,17 +128,20 @@ if __name__=='__main__':
 
 	# Box contraints
 	vmin = 1.5    # do not allow velocities slower than water
-	vmax = 5.5
+	vmax = 5.2
 	bounds = [(1.0/vmax**2, 1.0/vmin**2) for _ in range(np.prod(shape))]    # in [s^2/km^2]
 
 	m0 = 1./(smooth_vp.reshape(-1).astype(np.float64))**2
 
 	# FWI with L-BFGS
-	ftol = 2e-10 # converge when ftol <= _factor * EPSMCH
-	maxiter = 50
+	ftol = 2e-2 # converge when |fk - fkp1|/max(|fk|, |fkp1|, 1) < ftol
+	gtol = 1e-4	
+	if misfit_type > 0:
+		ftol = 2e-10 # for Wasserstein loss, it is always very small (~1e-6) depending on problems
+		gtol = 1e-9
+
+	maxiter = 500
 	maxls = 5
-	gtol = 1e-9
-	stepsize = 1e-8 # minimize default step size
 	L = 10
 	"""
 	scipy.optimize.minimize(fun, x0, args=(), method='L-BFGS-B', jac=None, 
@@ -159,11 +152,11 @@ if __name__=='__main__':
 	"""
 	tic = time()
 	result = optimize.minimize(fwi_loss, m0, 
-				args=(geometry0, obs, misfit_func, filt_func, bathy_mask, precond), 
+				args=(geometry0, obs, misfit_func, None, bathy_mask, precond), 
 				method='L-BFGS-B', jac=True, 
 	    		callback=fwi_callback, bounds=bounds, 
 	    		options={'ftol':ftol, 'maxiter':maxiter, 'disp':True,
-	    				'eps':stepsize, 'maxcor': L,
+	    				 'maxcor': L,
 	    				'maxls':maxls, 'gtol':gtol, 'iprint':1,
 	    		})
 	toc = time()
