@@ -84,24 +84,6 @@ class AcquisitionGeometry(Pickable):
         self._tn = tn
 
         self._src_data = kwargs.get('src_data', None)
-<<<<<<< HEAD
-        if self._src_data is not None:
-            nt = int(np.ceil((self._tn - self._t0 + self._dt)/self._dt))
-            self._src_data = self._src_data.squeeze()
-            assert self._src_data.shape[0] == nt
-            if self._src_data.ndim == 1:
-                self._src_data = np.tile(self._src_data.reshape(nt,1), [1, self._nsrc])
-            else:
-<<<<<<< HEAD
-                if self._src_data.shape[1] != self._nrec:
-                    self._src_data = self._src_data[:, 0]
-                    self._src_data = np.tile(self._src_data.reshape(nt,1), [1, self._nsrc])
-=======
->>>>>>> parent of 7dbcb6d (enable manually set source data)
-=======
-                assert self._src_data.shape[1] == self._nsrc
-
->>>>>>> parent of d182e31 (update)
 
     def resample(self, dt):
         self._dt = dt
@@ -186,11 +168,7 @@ class AcquisitionGeometry(Pickable):
 
     def new_src(self, name='src', src_type='self'):
         if self.src_type is None or src_type is None:
-<<<<<<< HEAD
             warning("No source type defined, it may return uninistiallized (zero) source")
-=======
-            warning("No surce type defined, returning uninistiallized (zero) source")
->>>>>>> parent of 7dbcb6d (enable manually set source data)
             return PointSource(name=name, grid=self.grid,
                                time_range=self.time_axis, npoint=self.nsrc,
                                coordinates=self.src_positions)
