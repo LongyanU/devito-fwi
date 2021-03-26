@@ -116,9 +116,8 @@ if __name__=='__main__':
 		g.tofile(os.path.join(result_dir, 'circle_1st_grad_'+str(misfit_type)))		
 		plot_image(g.reshape(shape), cmap='bwr', show=False)
 		plt.savefig(os.path.join(result_dir, 
-				'circle_1st_grad_'+str(misfit_type)+'.png'), bbox_inches='tight')
-		plt.savefig(os.path.join(result_dir, 
-				'circle_1st_grad_'+str(misfit_type)+'.eps'), bbox_inches='tight')
+				'circle_1st_grad_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
+				bbox_inches='tight')
 		plt.clf()
 	model_err = []
 	def fwi_callback(xk):
@@ -164,9 +163,11 @@ if __name__=='__main__':
 	# Plot FWI result
 	vp = 1.0/np.sqrt(result['x'].reshape(true_model.shape))
 
-	vp.tofile(os.path.join(result_dir, "circle_result_misfit_"+str(misfit_type)))
+	vp.tofile(os.path.join(result_dir, 
+			"circle_result_misfit_"+str(misfit_type)+('_filtered' if use_filter else '')))
 
-	file = open(os.path.join(result_dir, "circle_model_err_info_"+str(misfit_type)+'.txt'), "w")
+	file = open(os.path.join(result_dir, 
+			"circle_model_err_info_"+str(misfit_type)+('_filtered' if use_filter else '')+'.txt'), "w")
 	for item in model_err:
 		if item is not None:
 			file.write("%s\n" % str(item))
@@ -177,7 +178,8 @@ if __name__=='__main__':
 			for line in file:
 				if line.find('Operator') < 0:
 					useful_info.append(line)
-		file = open(os.path.join(result_dir, "circle_optim_info_"+str(misfit_type)+'.txt'), "w")
+		file = open(os.path.join(result_dir, 
+			"circle_optim_info_"+str(misfit_type)+('_filtered' if use_filter else '')+'.txt'), "w")
 		for item in useful_info:
 			file.write("%s\n" % item)
 		file.close()
@@ -188,7 +190,6 @@ if __name__=='__main__':
 		pass
 	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet", show=False)
 	plt.savefig(os.path.join(result_dir, 
-			'circle_inverted_'+str(misfit_type)+'.png'), bbox_inches='tight')
-	plt.savefig(os.path.join(result_dir, 
-			'circle_inverted_'+str(misfit_type)+'.eps'), bbox_inches='tight')
+			'circle_inverted_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
+			bbox_inches='tight')
 	plt.clf()
