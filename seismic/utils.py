@@ -3,6 +3,7 @@ from argparse import ArgumentParser, Action
 
 from devito import error, configuration, warning
 from devito.tools import Pickable
+from scipy import interpolate
 
 from .source import *
 
@@ -83,10 +84,35 @@ class AcquisitionGeometry(Pickable):
         self._t0 = t0
         self._tn = tn
 
+        self._nt = int(np.ceil((self._tn - self._t0 + self._dt)/self._dt))
+
         self._src_data = kwargs.get('src_data', None)
+        if self._src_data is not None:
+            nt = int(np.ceil((self._tn - self._t0 + self._dt)/self._dt))
+            self._src_data = self._src_data.squeeze()
+            assert self._src_data.shape[0] == nt
+            if self._src_data.ndim == 1:
+                self._src_data = np.tile(self._src_data.reshape(nt,1), [1, self._nsrc])
+            else:
+                assert self._src_data.shape[1] == self._nsrc
+
 
     def resample(self, dt):
+        if self._src_data is not None:
+            dt0 = self._dt
+            if np.isclose(self._dt, dt):
+                return self
+            t = np.linspace(start=self._t0, stop=self._tn, num=self._nt)
+            new_nt = int(np.ceil((self._tn - self._t0 + dt)/dt))
+            new_t = np.linspace(start=self._t0, stop=self._tn, num=new_nt)
+            data = np.zeros((new_t.size, self._nrec))
+            for i in range(self._nsrc):
+                tck = interpolate.splrep(t, self._src_data[:, i], k=3)
+                data[:, i] = interpolate.splev(new_t, tck)
+            self._src_data = data
+
         self._dt = dt
+
         return self
 
     @property
@@ -168,10 +194,10 @@ class AcquisitionGeometry(Pickable):
 
     def new_src(self, name='src', src_type='self'):
         if self.src_type is None or src_type is None:
-            warning("No surce type defined, returning uninistiallized (zero) source")
+            warning("No surce type defined, it may return uninistiallized (zero) source")
             return PointSource(name=name, grid=self.grid,
                                time_range=self.time_axis, npoint=self.nsrc,
-                               coordinates=self.src_positions)
+                               coordinates=self.src_positions, data=self._src_data)
         else:
             return sources[self.src_type](name=name, grid=self.grid, f0=self.f0,
                                           time_range=self.time_axis, npoint=self.nsrc,
@@ -182,7 +208,7 @@ class AcquisitionGeometry(Pickable):
     _pickle_kwargs = ['f0', 'src_type']
 
 
-sources = {'Wavelet': WaveletSource, 'Ricker': RickerSource, 'Gabor': GaborSource}
+sources = {'Wavelet': WaveletSource, 'Ricker': RickerSource, 'Gabor': GaborSource, 'DGauss': DGaussSource}
 
 
 def seismic_args(description):
