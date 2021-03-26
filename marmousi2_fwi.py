@@ -139,7 +139,7 @@ if __name__=='__main__':
 
 	# Box contraints
 	vmin = 1.5    # do not allow velocities slower than water
-	vmax = 5.2
+	vmax = 5.0
 	bounds = [(1.0/vmax**2, 1.0/vmin**2) for _ in range(np.prod(shape))]    # in [s^2/km^2]
 
 	m0 = 1./(smooth_vp.reshape(-1).astype(np.float64))**2
@@ -174,8 +174,8 @@ if __name__=='__main__':
 	# Plot FWI result
 	vp = 1.0/np.sqrt(result['x'].reshape(shape))
 
-	vp.tofile(os.path.join(result_dir, "marmousi_result_misfit_"+str(misfit_type)))
-	file = open(os.path.join(result_dir, "marmousi_model_err_info_"+str(misfit_type)+'.txt'), "w")
+	vp.tofile(os.path.join(result_dir, "marmousi2_result_misfit_"+str(misfit_type)))
+	file = open(os.path.join(result_dir, "marmousi2_model_err_info_"+str(misfit_type)+'.txt'), "w")
 	for item in model_err:
 		if item is not None:
 			file.write("%s\n" % str(item))
@@ -186,18 +186,18 @@ if __name__=='__main__':
 			for line in file:
 				if line.find('Operator') < 0:
 					useful_info.append(line)
-		file = open(os.path.join(result_dir, "marmousi_optim_info_"+str(misfit_type)+'.txt'), "w")
+		file = open(os.path.join(result_dir, "marmousi2_optim_info_"+str(misfit_type)+'.txt'), "w")
 		for item in useful_info:
 			file.write("%s\n" % item)
 		file.close()
-		nohup_file = 'marmousi_nohup_'+str(misfit_type)+'.out'
+		nohup_file = 'marmousi2_nohup_'+str(misfit_type)+'.out'
 		os.rename('./nohup.out', nohup_file)
 		shutil.move(nohup_file, os.path.join(result_dir, nohup_file))
 	except:
 		pass
 	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet", show=False)
 	plt.savefig(os.path.join(result_dir, 
-			'marmousi_inverted_'+str(misfit_type)+'.png'), bbox_inches='tight')
+			'marmousi2_inverted_'+str(misfit_type)+'.png'), bbox_inches='tight')
 	plt.savefig(os.path.join(result_dir, 
-			'marmousi_inverted_'+str(misfit_type)+'.eps'), bbox_inches='tight')
+			'marmousi2_inverted_'+str(misfit_type)+'.eps'), bbox_inches='tight')
 	plt.clf()

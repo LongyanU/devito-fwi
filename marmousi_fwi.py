@@ -50,7 +50,7 @@ if __name__=='__main__':
 	space_order = 8
 	nbl = 40
 	free_surface = False
-	dt = 3.
+	dt = 2.
 
 	true_vp = np.fromfile("./model_data/SMARMN/vp.true", dtype=np.float32).reshape(shape)/1000
 	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth_20", dtype=np.float32).reshape(shape)/1000

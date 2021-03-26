@@ -194,7 +194,7 @@ class AcquisitionGeometry(Pickable):
 
     def new_src(self, name='src', src_type='self'):
         if self.src_type is None or src_type is None:
-            warning("No surce type defined, it may return uninistiallized (zero) source")
+            warning("No source type defined, it may return uninistiallized (zero) source")
             return PointSource(name=name, grid=self.grid,
                                time_range=self.time_axis, npoint=self.nsrc,
                                coordinates=self.src_positions, data=self._src_data)
