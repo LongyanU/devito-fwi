@@ -1,6 +1,5 @@
 from seismic import Model, AcquisitionGeometry, Receiver
 from seismic import plot_shotrecord, plot_velocity, plot_image
-from seismic.wavelet import Ricker, Gabor, DGauss
 import numpy as np
 from scipy import optimize
 from distributed import Client, wait, LocalCluster
@@ -88,24 +87,24 @@ if __name__=='__main__':
 	rec_coordinates[:, 0] = np.linspace(spacing[0], true_model.domain_size[0] - spacing[0], num=nreceivers)
 	rec_coordinates[:, 1] = 30.    # Receiver depth
 
-	src_data = Ricker(t0, tn, dt, f0)
+	filt_func = None
 	if use_filter:
 		filt_func = Filter(filter_type='highpass', freqmin=2, 
-					corners=6, df=1000/dt)
-		src_data = filt_func(src_data)
+					corners=6, df=1000/dt)		
 	# Set up geometry objects for observed and predicted data
 	geometry1 = AcquisitionGeometry(true_model, rec_coordinates, src_coordinates, t0, tn, 
-					f0=f0, src_data=src_data)
+					f0=f0, src_type='Ricker', filter=filt_func)
 	geometry0 = AcquisitionGeometry(init_model, rec_coordinates, src_coordinates, t0, tn, 
-					f0=f0, src_data=src_data)
+					f0=f0, src_type='Ricker', filter=filt_func)
 	geometry1.resample(resample_dt)
 	geometry0.resample(resample_dt)
 	#plot_velocity(true_model, source=geometry1.src_positions, receiver=geometry1.rec_positions[::4, :])
 
 	obs = fm_multi(geometry1, save=False)
-
+	print(obs[int(nsources/2)].data.shape)
 	plot_shotrecord(obs[int(nsources/2)].data, true_model, t0, tn, show=False)
-	plt.savefig(os.path.join(result_dir, 'marmousi2_data'+'.png'), 
+	plt.savefig(os.path.join(result_dir, 
+				'marmousi2_data'+('_filtered' if use_filter else '')+'.png'), 
 				bbox_inches='tight')
 	plt.clf()
 

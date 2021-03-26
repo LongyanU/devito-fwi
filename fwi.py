@@ -42,19 +42,12 @@ class Filter(object):
 		return seismic_filter(data, self.filter_type, self.freqmin, 
 			self.freqmax, self.df, self.corners, self.zerophase, self.axis)
 
-def _loss(x, geometry, y, obj_func):
-
-	# Convert x to velocity
-	v = 1./np.sqrt(x.reshape(geometry.model.shape))
-	# Overwrite current velocity in geometry (don't update boundary region)
-	geometry.model.update('vp', v.reshape(geometry.model.shape))
-	# Evaluate objective function
-	fval, grad = obj_func()
 
 def fm_single(geometry, save=False):
 	"""Modeling function for acoustic function
 	"""
-	solver = AcousticWaveSolver(geometry.model, geometry, space_order=4)
+	solver = AcousticWaveSolver(geometry.model, geometry, 
+				space_order=geometry.model.space_order)
 	data, u = solver.forward(vp=geometry.model.vp, save=save)[0:2]
 	return data, u
 
@@ -66,7 +59,8 @@ def fm_multi(geometry, save=False):
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
-					f0=geometry.f0, src_type=geometry.src_type)
+					f0=geometry.f0, src_type=geometry.src_type, 
+					filter=geometry._filter)
 		# Call modeling function
 		shot = fm_single(geom_i, save)[0]
 		shots.append(shot)
@@ -81,7 +75,8 @@ def fm_multi_parallel(client, geometry, save=False):
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
-					f0=geometry.f0, src_type=geometry.src_type)
+					f0=geometry.f0, src_type=geometry.src_type, 
+					filter=geometry._filter)
 		# Call modeling function
 		futures.append(client.submit(fm_single, geom_i, save))
 
@@ -89,7 +84,7 @@ def fm_multi_parallel(client, geometry, save=False):
 	wait(futures)
 	shots = []
 	for i in range(geometry.nsrc):
-		shots.append(futures[i].result()[0])
+		shots.append((futures[i].result()[0]))
 
 	return shots
 
@@ -120,14 +115,23 @@ def fix_source_illumination(geometry, g):
 
 	return g
 
-def fwi_obj_single(geometry, obs, misfit_func, filter_func=None):
+def fwi_obj_single(geometry, obs, misfit_func, 
+			filter_func=None, resample_dt=None, time_axis=None):
 
 	grad = Function(name="grad", grid=geometry.model.grid)
 
-	solver = AcousticWaveSolver(geometry.model, geometry, space_order=4)
+	solver = AcousticWaveSolver(geometry.model, geometry, 
+					space_order=geometry.model.space_order)
 	# predicted data and residual
 	pred, wfd = solver.forward(vp=geometry.model.vp, save=True)[0:2]
 
+	if resample_dt is None:
+		resample_dt = geometry.dt
+	if time_axis is None:
+		time_axis = geometry.time_axis
+	if resample_dt is not None:
+		obs = obs.resample(resample_dt)
+		pred = pred.resample(resample_dt)	
 	if filter_func is not None:
 		syn_data = filter_func(pred.data)
 		obs_data = filter_func(obs.data) 
@@ -137,9 +141,11 @@ def fwi_obj_single(geometry, obs, misfit_func, filter_func=None):
 	fval, residual_data = misfit_func(syn_data, obs_data)
 
 	residual = Receiver(name="rec", grid=geometry.model.grid, 
-				time_range=geometry.time_axis, 
+				time_range=time_axis, 
 				coordinates=geometry.rec_positions)	
 	residual.data[:] = residual_data[:]
+	if resample_dt is not None:
+		residual = residual.resample(geometry.dt)
 
 	solver.gradient(rec=residual, u=wfd, vp=geometry.model.vp, grad=grad)
 
@@ -163,9 +169,10 @@ def fwi_obj_multi(geometry, obs, misfit_func,
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
-					f0=geometry.f0, src_type=geometry.src_type)
+					f0=geometry.f0, src_type=geometry.src_type, 
+					filter=geometry._filter)
 		fval_, grad_, _, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
-								filter_func)
+							filter_func, geometry.dt, geometry.time_axis)
 		fval += fval_
 		grad += grad_
 		illum += illum_
@@ -182,9 +189,10 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
-					f0=geometry.f0, src_type=geometry.src_type)
+					f0=geometry.f0, src_type=geometry.src_type, 
+					filter=geometry._filter)
 		futures.append(client.submit(fwi_obj_single, geom_i, obs[i], 
-							misfit_func))
+						misfit_func, geometry.dt, geometry.time_axis))
 	wait(futures)
 	fval = .0
 	grad = np.zeros(geometry.model.shape)

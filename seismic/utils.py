@@ -84,6 +84,7 @@ class AcquisitionGeometry(Pickable):
         self._tn = tn
 
         self._src_data = kwargs.get('src_data', None)
+        self._filter = kwargs.get('filter', None)
 
     def resample(self, dt):
         self._dt = dt
@@ -173,10 +174,16 @@ class AcquisitionGeometry(Pickable):
                                time_range=self.time_axis, npoint=self.nsrc,
                                coordinates=self.src_positions)
         else:
-            return sources[self.src_type](name=name, grid=self.grid, f0=self.f0,
+            source = sources[self.src_type](name=name, grid=self.grid, f0=self.f0,
                                           time_range=self.time_axis, npoint=self.nsrc,
                                           coordinates=self.src_positions,
                                           t0=self._t0w, a=self._a)
+            if self._filter is not None:
+                self._filter.df = 1000 / self._dt
+                for i in range(self.nsrc):
+                    source.data[:, i] = self._filter(source.data[:, i])
+
+            return source
 
     _pickle_args = ['grid', 'rec_positions', 'src_positions', 't0', 'tn']
     _pickle_kwargs = ['f0', 'src_type']
