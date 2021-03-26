@@ -80,7 +80,9 @@ class AcquisitionGeometry(Pickable):
 
         self._grid = model.grid
         self._model = model
-        self._dt = model.critical_dt
+        self._dt = kwargs.get('dt', None)
+        if self._dt is None:
+            self._dt = model.critical_dt
         self._t0 = t0
         self._tn = tn
 
@@ -94,8 +96,9 @@ class AcquisitionGeometry(Pickable):
             if self._src_data.ndim == 1:
                 self._src_data = np.tile(self._src_data.reshape(nt,1), [1, self._nsrc])
             else:
-                assert self._src_data.shape[1] == self._nsrc
-
+                if self._src_data.shape[1] != self._nrec:
+                    self._src_data = self._src_data[:, 0]
+                    self._src_data = np.tile(self._src_data.reshape(nt,1), [1, self._nsrc])
 
     def resample(self, dt):
         if self._src_data is not None:

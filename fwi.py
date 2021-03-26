@@ -68,7 +68,7 @@ def fm_multi(geometry, save=False):
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type, 
-					src_data=geometry._src_data)
+					src_data=geometry._src_data, dt=geometry.dt)
 		# Call modeling function
 		shot = fm_single(geom_i, save)[0]
 		shots.append(shot)
@@ -84,7 +84,7 @@ def fm_multi_parallel(client, geometry, save=False):
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type, 
-					src_data=geometry._src_data)
+					src_data=geometry._src_data, dt=geometry.dt)
 		# Call modeling function
 		futures.append(client.submit(fm_single, geom_i, save))
 
@@ -127,7 +127,8 @@ def fwi_obj_single(geometry, obs, misfit_func, filter_func=None):
 
 	grad = Function(name="grad", grid=geometry.model.grid)
 
-	solver = AcousticWaveSolver(geometry.model, geometry, space_order=4)
+	solver = AcousticWaveSolver(geometry.model, geometry, 
+					space_order=geometry.model.space_order)
 	# predicted data and residual
 	pred, wfd = solver.forward(vp=geometry.model.vp, save=True)[0:2]
 
@@ -167,7 +168,7 @@ def fwi_obj_multi(geometry, obs, misfit_func,
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type, 
-					src_data=geometry._src_data)
+					src_data=geometry._src_data, dt=geometry.dt)
 		fval_, grad_, _, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
 								filter_func)
 		fval += fval_
@@ -187,7 +188,7 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type, 
-					src_data=geometry._src_data)
+					src_data=geometry._src_data, dt=geometry.dt)
 		futures.append(client.submit(fwi_obj_single, geom_i, obs[i], 
 							misfit_func))
 	wait(futures)
