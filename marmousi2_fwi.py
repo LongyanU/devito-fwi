@@ -74,7 +74,7 @@ if __name__=='__main__':
 	# Set up acquisiton geometry
 	t0 = 0.
 	tn = 4500. 
-	f0 = 0.005
+	f0 = 0.007
 	# Set up source geometry, but define 5 sources instead of just one.
 	nsources = 31
 	src_coordinates = np.empty((nsources, 2))
@@ -131,11 +131,22 @@ if __name__=='__main__':
 				bbox_inches='tight')
 
 		plt.clf()
+		
 	model_err = []
+	k = 0
 	def fwi_callback(xk):
 		m = 1. / (true_vp.reshape(-1).astype(np.float64))**2
 		model_err.append(np.linalg.norm((xk-m)/m))
-
+		k += 1
+		if k%10==0:
+			v = np.sqrt(1./xk)
+			v.tofile(os.path.join(result_dir, 
+				'marmousi_iter'+str(k)+'_'+str(misfit_type)+('_filtered' if use_filter else '')))
+			plot_image(v.reshape(shape), cmap='jet', show=False)
+			plt.savefig(os.path.join(result_dir, 
+					'marmousi_iter'+str(k)+'_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
+					bbox_inches='tight')
+			plt.clf()
 	# Box contraints
 	vmin = 1.5    # do not allow velocities slower than water
 	vmax = 5.0
