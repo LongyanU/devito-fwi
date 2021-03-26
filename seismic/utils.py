@@ -79,9 +79,7 @@ class AcquisitionGeometry(Pickable):
 
         self._grid = model.grid
         self._model = model
-        self._dt = kwargs.get('dt', None)
-        if self._dt is None:
-            self._dt = model.critical_dt
+        self._dt = model.critical_dt
         self._t0 = t0
         self._tn = tn
 
@@ -94,11 +92,16 @@ class AcquisitionGeometry(Pickable):
             if self._src_data.ndim == 1:
                 self._src_data = np.tile(self._src_data.reshape(nt,1), [1, self._nsrc])
             else:
+<<<<<<< HEAD
                 if self._src_data.shape[1] != self._nrec:
                     self._src_data = self._src_data[:, 0]
                     self._src_data = np.tile(self._src_data.reshape(nt,1), [1, self._nsrc])
 =======
 >>>>>>> parent of 7dbcb6d (enable manually set source data)
+=======
+                assert self._src_data.shape[1] == self._nsrc
+
+>>>>>>> parent of d182e31 (update)
 
     def resample(self, dt):
         self._dt = dt
