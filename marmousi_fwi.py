@@ -53,7 +53,7 @@ if __name__=='__main__':
 	dt = 2.
 
 	true_vp = np.fromfile("./model_data/SMARMN/vp.true", dtype=np.float32).reshape(shape)/1000
-	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth_20", dtype=np.float32).reshape(shape)/1000
+	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth_10", dtype=np.float32).reshape(shape)/1000
 	bathy_mask = np.ones(shape, dtype=np.float32)
 	bathy_mask[:, :7] = 0
 	if not use_bathy:
