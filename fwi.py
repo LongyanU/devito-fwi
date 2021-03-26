@@ -54,8 +54,7 @@ def _loss(x, geometry, y, obj_func):
 def fm_single(geometry, save=False):
 	"""Modeling function for acoustic function
 	"""
-	solver = AcousticWaveSolver(geometry.model, geometry, 
-					space_order=geometry.model.space_order)
+	solver = AcousticWaveSolver(geometry.model, geometry, space_order=4)
 	data, u = solver.forward(vp=geometry.model.vp, save=save)[0:2]
 	return data, u
 
@@ -67,8 +66,7 @@ def fm_multi(geometry, save=False):
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
-					f0=geometry.f0, src_type=geometry.src_type, 
-					src_data=geometry._src_data)
+					f0=geometry.f0, src_type=geometry.src_type)
 		# Call modeling function
 		shot = fm_single(geom_i, save)[0]
 		shots.append(shot)
@@ -83,8 +81,7 @@ def fm_multi_parallel(client, geometry, save=False):
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
-					f0=geometry.f0, src_type=geometry.src_type, 
-					src_data=geometry._src_data)
+					f0=geometry.f0, src_type=geometry.src_type)
 		# Call modeling function
 		futures.append(client.submit(fm_single, geom_i, save))
 
@@ -166,8 +163,7 @@ def fwi_obj_multi(geometry, obs, misfit_func,
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
-					f0=geometry.f0, src_type=geometry.src_type, 
-					src_data=geometry._src_data)
+					f0=geometry.f0, src_type=geometry.src_type)
 		fval_, grad_, _, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
 								filter_func)
 		fval += fval_
@@ -186,8 +182,7 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
-					f0=geometry.f0, src_type=geometry.src_type, 
-					src_data=geometry._src_data)
+					f0=geometry.f0, src_type=geometry.src_type)
 		futures.append(client.submit(fwi_obj_single, geom_i, obs[i], 
 							misfit_func))
 	wait(futures)
@@ -215,7 +210,7 @@ def fwi_loss(x, geometry, obs, misfit_func,
 	
 	fval, grad = fwi_obj_multi(geometry, obs, misfit_func, 
 						filter_func, mask, precond)
-	print('Loss: %f' % fval)
+
 	return fval, grad.flatten().astype(np.float64)
 
 class FWI(object):
