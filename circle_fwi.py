@@ -25,6 +25,9 @@ parser.add_argument('--check-gradient', type=int, default=1,
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
 parser.add_argument('--resample', type=float, default=5., help='resample dt')
+parser.add_argument('--ftol', type=float, default=1e-2, help='Optimizing loss tolerance')
+parser.add_argument('--gtol', type=float, default=1e-4, help='Optimizing gradient norm tolerance')
+
 if __name__=='__main__':
 	# Parse argument
 	args = parser.parse_args()
@@ -38,6 +41,8 @@ if __name__=='__main__':
 	check_gradient = args.check_gradient
 	use_filter = args.filter
 	resample_dt = args.resample
+	ftol = args.ftol
+	gtol = args.gtol	
 	# Set up velocity model
 	shape = (201, 201)      # Number of grid points (nx, nz).
 	spacing = (10., 10.)    # Grid spacing in m. The domain size is now 1km by 1km.
@@ -133,11 +138,12 @@ if __name__=='__main__':
 	m0 = 1.0 / (v0.reshape(-1).astype(np.float64))**2
 
 	# FWI with L-BFGS
-	ftol = 2e-9 # converge when ftol <= _factor * EPSMCH
+	# ftol = 2e-2 converge when |fk - fkp1|/max(|fk|, |fkp1|, 1) < ftol
+	# gtol = 1e-4	
+	# for Wasserstein loss, it is always very small (~1e-6) depending on problems
+
 	maxiter = 50
 	maxls = 5
-	gtol = 1e-6
-	stepsize = 1e-8 # minimize default step size
 	L = 10
 	"""
 	scipy.optimize.minimize(fun, x0, args=(), method='L-BFGS-B', jac=None, 
@@ -152,8 +158,7 @@ if __name__=='__main__':
 				method='L-BFGS-B', jac=True, 
 	    		callback=fwi_callback, bounds=bounds, 
 	    		options={'ftol':ftol, 'maxiter':maxiter, 'disp':True,
-	    				'eps':stepsize, 'maxcor': L,
-	    				'maxls':maxls, 'gtol':gtol, 'iprint':1,
+	    				'maxcor': L, 'maxls':maxls, 'gtol':gtol, 'iprint':1,
 	    		})
 	toc = time()
 	print(f'\n Elapsed time: {toc-tic:.2f}s')	

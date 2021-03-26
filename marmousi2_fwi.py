@@ -25,6 +25,9 @@ parser.add_argument('--check-gradient', type=int, default=1,
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
 parser.add_argument('--resample', type=float, default=5., help='resample dt')
+parser.add_argument('--ftol', type=float, default=1e-2, help='Optimizing loss tolerance')
+parser.add_argument('--gtol', type=float, default=1e-4, help='Optimizing gradient norm tolerance')
+
 if __name__=='__main__':
 	# Parse argument
 	args = parser.parse_args()
@@ -38,6 +41,8 @@ if __name__=='__main__':
 	check_gradient = args.check_gradient
 	use_filter = args.filter
 	resample_dt = args.resample
+	ftol = args.ftol
+	gtol = args.gtol	
 	# Setup velocity model
 	shape = (340, 140)      # Number of grid points (nx, nz).
 	spacing = (30., 30.)    # Grid spacing in m. The domain size is now 1km by 1km.
@@ -140,11 +145,10 @@ if __name__=='__main__':
 	m0 = 1./(smooth_vp.reshape(-1).astype(np.float64))**2
 
 	# FWI with L-BFGS
-	ftol = 2e-2 # converge when |fk - fkp1|/max(|fk|, |fkp1|, 1) < ftol
-	gtol = 1e-4	
-	if misfit_type > 0:
-		ftol = 2e-10 # for Wasserstein loss, it is always very small (~1e-6) depending on problems
-		gtol = 1e-9
+	# ftol = 2e-2 converge when |fk - fkp1|/max(|fk|, |fkp1|, 1) < ftol
+	# gtol = 1e-4	
+	# for Wasserstein loss, it is always very small (~1e-6) depending on problems
+
 
 	maxiter = 500
 	maxls = 5
