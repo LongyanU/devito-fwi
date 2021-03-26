@@ -23,7 +23,7 @@ parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
-parser.add_argument('--resample', type=float, default=5., help='resample dt')
+parser.add_argument('--resample', type=float, default=6., help='resample dt')
 parser.add_argument('--ftol', type=float, default=1e-2, help='Optimizing loss tolerance')
 parser.add_argument('--gtol', type=float, default=1e-4, help='Optimizing gradient norm tolerance')
 
@@ -101,7 +101,6 @@ if __name__=='__main__':
 	#plot_velocity(true_model, source=geometry1.src_positions, receiver=geometry1.rec_positions[::4, :])
 
 	obs = fm_multi(geometry1, save=False)
-	print(obs[int(nsources/2)].data.shape)
 	plot_shotrecord(obs[int(nsources/2)].data, true_model, t0, tn, show=False)
 	plt.savefig(os.path.join(result_dir, 
 				'marmousi2_data'+('_filtered' if use_filter else '')+'.png'), 
@@ -131,22 +130,22 @@ if __name__=='__main__':
 				bbox_inches='tight')
 
 		plt.clf()
-		
+
 	model_err = []
 	k = 0
 	def fwi_callback(xk):
 		m = 1. / (true_vp.reshape(-1).astype(np.float64))**2
 		model_err.append(np.linalg.norm((xk-m)/m))
-		k += 1
 		if k%10==0:
 			v = np.sqrt(1./xk)
 			v.tofile(os.path.join(result_dir, 
-				'marmousi_iter'+str(k)+'_'+str(misfit_type)+('_filtered' if use_filter else '')))
+				'marmousi2_iter'+str(k)+'_'+str(misfit_type)+('_filtered' if use_filter else '')))
 			plot_image(v.reshape(shape), cmap='jet', show=False)
 			plt.savefig(os.path.join(result_dir, 
-					'marmousi_iter'+str(k)+'_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
+					'marmousi2_iter'+str(k)+'_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
 					bbox_inches='tight')
 			plt.clf()
+		k += 1	
 	# Box contraints
 	vmin = 1.5    # do not allow velocities slower than water
 	vmax = 5.0
