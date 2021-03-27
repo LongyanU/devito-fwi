@@ -19,10 +19,10 @@ parser.add_argument('--precond', type=int, default=1, help='apply precondition')
 parser.add_argument('--odir', type=str, default='./result/SMARMN', 
 			help='directory to output result')
 parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
-parser.add_argument('--check-gradient', type=int, default=1, 
+parser.add_argument('--check-gradient', type=int, default=0, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
-parser.add_argument('--resample', type=float, default=6., help='resample dt')
+parser.add_argument('--resample', type=float, default=0., help='resample dt, default 0 will not resample')
 parser.add_argument('--ftol', type=float, default=1e-2, help='Optimizing loss tolerance')
 parser.add_argument('--gtol', type=float, default=1e-4, help='Optimizing gradient norm tolerance')
 parser.add_argument('--nsrc', type=int, default=21, help='number of shots')
@@ -100,6 +100,8 @@ if __name__=='__main__':
 					f0=f0, src_type='Ricker', filter=filt_func)
 	geometry0 = AcquisitionGeometry(init_model, rec_coordinates, src_coordinates, t0, tn, 
 					f0=f0, src_type='Ricker', filter=filt_func)
+	if resample_dt == 0:
+		resample_dt = dt
 	geometry1.resample(resample_dt)
 	geometry0.resample(resample_dt)
 	#plot_velocity(true_model, source=geometry1.src_positions, receiver=geometry1.rec_positions[::4, :])
