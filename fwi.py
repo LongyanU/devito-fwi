@@ -129,14 +129,12 @@ def fix_source_illumination(geometry, g):
 	return g
 
 def fwi_obj_single(geometry, obs, misfit_func, 
-			filter_func=None, resample_dt=None):
-
-	grad = Function(name="grad", grid=geometry.model.grid)
+			filter_func=None, resample_dt=None, calc_grad=False):
 
 	solver = AcousticWaveSolver(geometry.model, geometry, 
 					space_order=geometry.model.space_order)
 	# predicted data and residual
-	pred, wfd = solver.forward(vp=geometry.model.vp, save=True)[0:2]
+	pred, wfd = solver.forward(vp=geometry.model.vp, save=calc_grad)[0:2]
 
 	if resample_dt is None:
 		resample_dt = geometry.dt
@@ -158,21 +156,24 @@ def fwi_obj_single(geometry, obs, misfit_func,
 	residual.data[:] = resample(residual_data, 
 					geometry.time_axis.time_values,
 					pred.time_values)[:]
+	illum, calc_grad = None, None
+	if calc_grad:
+		grad = Function(name="grad", grid=geometry.model.grid)
+		solver.gradient(rec=residual, u=wfd, vp=geometry.model.vp, grad=grad)
 
-	solver.gradient(rec=residual, u=wfd, vp=geometry.model.vp, grad=grad)
+		# Convert to numpy array and remove absorbing boundaries
+		nbl = geometry.model.nbl
+		crop_grad = np.array(grad.data[:])[nbl:-nbl, nbl:-nbl]
+		crop_grad = fix_source_illumination(geometry, crop_grad)
 
-	# Convert to numpy array and remove absorbing boundaries
-	nbl = geometry.model.nbl
-	crop_grad = np.array(grad.data[:])[nbl:-nbl, nbl:-nbl]
-	crop_grad = fix_source_illumination(geometry, crop_grad)
-
-	illum = (wfd.data * wfd.data).sum(axis=0)[nbl:-nbl, nbl:-nbl]
-	illum = fix_source_illumination(geometry, illum)
+		illum = (wfd.data * wfd.data).sum(axis=0)[nbl:-nbl, nbl:-nbl]
+		illum = fix_source_illumination(geometry, illum)
 
 	return fval, crop_grad, residual, illum
 
 def fwi_obj_multi(geometry, obs, misfit_func, 
-			filter_func=None, mask=None, precond=True):
+			filter_func=None, mask=None, precond=True, 
+			calc_grad=False):
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
 	illum = np.zeros(geometry.model.shape)
@@ -184,18 +185,20 @@ def fwi_obj_multi(geometry, obs, misfit_func,
 					f0=geometry.f0, src_type=geometry.src_type, 
 					filter=geometry._filter)
 		fval_, grad_, _, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
-							filter_func, geometry.dt)
+							filter_func, geometry.dt, calc_grad)
 		fval += fval_
-		grad += grad_
-		illum += illum_
-	if precond:
-		grad  /= np.sqrt(illum + 1e-30)
-	if mask is not None:
-		grad *= mask 
+		if calc_grad:
+			grad += grad_
+			illum += illum_
+	if calc_grad:
+		if precond:
+			grad  /= np.sqrt(illum + 1e-30)
+		if mask is not None:
+			grad *= mask 
 	return fval, grad
 
 def fwi_obj_multi_parallel(client, geometry, obs, misfit_func, 
-			filter_func=None, mask=None, precond=True):
+			filter_func=None, mask=None, precond=True, calc_grad=False):
 	futures = []
 	for i in range(geometry.nsrc):
 		# Geometry for current shot
@@ -204,7 +207,7 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 					f0=geometry.f0, src_type=geometry.src_type, 
 					filter=geometry._filter)
 		futures.append(client.submit(fwi_obj_single, geom_i, obs[i], 
-						misfit_func, geometry.dt))
+						misfit_func, geometry.dt, calc_grad))
 	wait(futures)
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
@@ -212,40 +215,28 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 	nbl = geometry.model.nbl	
 	for i in range(geometry.nsrc):
 		fval += futures[i].result()[0]
-		grad += futures[i].result()[1]
-		illum += futures[i].result()[3]
-		
-	if precond:
-		grad  /= np.sqrt(illum + 1e-30)	
-	if mask is not None:
-		grad *= mask
+		if calc_grad:
+			grad += futures[i].result()[1]
+			illum += futures[i].result()[3]
+	if calc_grad:		
+		if precond:
+			grad  /= np.sqrt(illum + 1e-30)	
+		if mask is not None:
+			grad *= mask
 
 	return fval, grad
 
 def fwi_loss(x, geometry, obs, misfit_func, 
-		filter_func=None, mask=None, precond=True):
+		filter_func=None, mask=None, precond=True,
+		calc_grad=True):
 	# Convert x to velocity
 	v = 1. / np.sqrt(x.reshape(geometry.model.shape))
 	geometry.model.update('vp', v.reshape(geometry.model.shape))
 	
 	fval, grad = fwi_obj_multi(geometry, obs, misfit_func, 
-						filter_func, mask, precond)
+						filter_func, mask, precond, calc_grad)
+
+	print("Loss: %f"%fval)
 
 	return fval, grad.flatten().astype(np.float64)
 
-class FWI(object):
-	def __init__(self, true_model, misfit_func, maxIter=10, ftol=0.01):
-
-		self.true_model = true_model
-		self.geometry = geometry
-		self.optim_methd = 'L-BFGS-B'
-		self.ftol = ftol
-		self.misfit = misfit_func
-		self.maxIter = maxIter
-		self.model_err = []
-
-	def _fwi_callback(self, x):
-		nbl = self.true_model.nbl
-		v = self.true_model.vp.data[nbl:-nbl, nbl:-nbl]
-		m = 1. / (v.reshape(-1).astype(np.float64))**2
-		self.model_err.append(np.linalg.norm((x-m)/m))
