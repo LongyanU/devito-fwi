@@ -26,7 +26,7 @@ parser.add_argument('--resample', type=float, default=5., help='resample dt')
 parser.add_argument('--ftol', type=float, default=1e-2, help='Optimizing loss tolerance')
 parser.add_argument('--gtol', type=float, default=1e-4, help='Optimizing gradient norm tolerance')
 parser.add_argument('--nsrc', type=int, default=21, help='number of shots')
-parser.add_argument('--maxiter', type=int, default=500, help='FWI iteration')
+parser.add_argument('--maxiter', type=int, default=50, help='FWI iteration')
 
 if __name__=='__main__':
 	# Parse argument
