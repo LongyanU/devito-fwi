@@ -49,7 +49,7 @@ int main(int argc, char **argv){
 	fclose(fp);
 
 	init_fotSpace_2d(&otspace, n1, n2, syn, obs);
-	w = fotGradient2d(&otspace, adj, n1, n2, 0);
+	w = fotGradient2d(&otspace, adj, n1, n2, 1);
 
 	if(write_adj){
 		sprintf(str, "%s/grad_data", dir);
