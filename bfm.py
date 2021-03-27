@@ -43,7 +43,7 @@ class bfm(object):
 		self.orig_dtype = f.dtype
 		self.mu = f.astype(np.float64)
 		self.nu = g.astype(np.float64)
-		if self.shape is None or self.shape[0] != f.shape[1]:
+		if self.shape is None or self.shape[::-1] != f.shape:
 			self.shape = (f.shape[1], f.shape[0])
 			self._init()
 

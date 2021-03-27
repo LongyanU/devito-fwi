@@ -5,6 +5,7 @@ import numpy as np
 from scipy import optimize
 from distributed import wait
 from seismic.filter import bandpass, lowpass, highpass
+from copy import deepcopy
 
 def seismic_filter(data, filter_type: str, freqmin=None, freqmax=None, 
 				df=None, corners=16, zerophase=False, axis=-1):
@@ -130,7 +131,7 @@ def fwi_obj_single(geometry, obs, misfit_func,
 	if time_axis is None:
 		time_axis = geometry.time_axis
 	if resample_dt is not None:
-		obs = obs.resample(resample_dt)
+		obs = deepcopy(obs).resample(resample_dt) # Important: use deepcopy to avoid changing the orignal data
 		pred = pred.resample(resample_dt)	
 	if filter_func is not None:
 		syn_data = filter_func(pred.data)
