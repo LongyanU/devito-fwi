@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description='Full waveform inversion')
 parser.add_argument('--misfit', type=int, default=0, choices=[0, 1, 2], 
 			help='misfit function type:0=least square/1=1d W2/2=2d W2')
 parser.add_argument('--precond', type=int, default=1, help='apply precondition')
-parser.add_argument('--odir', type=str, default='./result', 
+parser.add_argument('--odir', type=str, default='./result/SMARM2', 
 			help='directory to output result')
 parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=1, 
@@ -167,7 +167,6 @@ if __name__=='__main__':
 	# ftol = 2e-2 converge when |fk - fkp1|/max(|fk|, |fkp1|, 1) < ftol
 	# gtol = 1e-4	
 	# for Wasserstein loss, it is always very small (~1e-6) depending on problems
-
 	maxls = 5
 	L = 10
 	"""
