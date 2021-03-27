@@ -7,8 +7,7 @@ from scipy import optimize
 import matplotlib.pyplot as plt
 
 from fwi import Filter, fm_multi, fwi_obj_multi, fwi_loss
-from misfit import least_square, qWasserstein
-from bfm import bfm
+from misfit import least_square, qWasserstein, bfm
 
 import argparse, os, shutil
 from time import time
