@@ -154,10 +154,9 @@ class bfmx(object):
 		self.step_scale = step_scale
 
 	def setup(self, f, g):
-		self.orig_dtype = f.dtype
 		self.n1, self.n2 = f.shape
-		f.astype(np.float64).transpose().tofile(os.path.join(self.path, 'syn_data'))
-		g.astype(np.float64).transpose().tofile(os.path.join(self.path, 'obs_data'))
+		f.astype(np.float32).transpose().tofile(os.path.join(self.path, 'syn_data'))
+		g.astype(np.float32).transpose().tofile(os.path.join(self.path, 'obs_data'))
 
 	def solve(self):
 		try:
@@ -175,7 +174,7 @@ class bfmx(object):
 		finally:
 			f.close()
 
-		grad = np.fromfile(os.path.join(self.path, 'grad_data'), dtype=np.float64)
+		grad = np.fromfile(os.path.join(self.path, 'grad_data'), dtype=np.float32)
 		grad = grad.reshape(self.n2, self.n1).transpose()
 		loss = np.loadtxt(os.path.join(self.path, 'loss'))
 
@@ -191,4 +190,4 @@ class bfmx(object):
 		self.setup(f, g)
 		loss, grad = self.solve()
 
-		return loss, grad
+		return loss, grad.astype(f.dtype)

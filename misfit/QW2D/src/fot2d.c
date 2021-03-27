@@ -1,10 +1,10 @@
 #include "fot2d.h"
 
 /* poisson solver */
-double *create_negative_laplace_kernel2d(int n1, int n2){
-	double *kernel=(double *)calloc(n1*n2,sizeof(double));
+float *create_negative_laplace_kernel2d(int n1, int n2){
+	float *kernel=(float *)calloc(n1*n2,sizeof(float));
 	int i, j;
-	double x, y, negativeLaplacian;
+	float x, y, negativeLaplacian;
 	for(i=0;i<n2;i++){
 		for(j=0;j<n1;j++){
 			x=M_PI*j/(n1*1.0);
@@ -18,16 +18,16 @@ double *create_negative_laplace_kernel2d(int n1, int n2){
 
 struct poisson_solver create_poisson_solver_workspace2d(int n1, int n2){
 	struct poisson_solver fftps;
-	fftps.workspace=(double *)calloc(n1*n2,sizeof(double));
+	fftps.workspace=(float *)calloc(n1*n2,sizeof(float));
 	fftps.kernel=create_negative_laplace_kernel2d(n1,n2);
 
 // #ifdef _OPENMP
 // 	fftw_plan_with_nthreads(omp_get_max_threads());
 // #endif	
-	fftps.dctIn=fftw_plan_r2r_2d(n2, n1, fftps.workspace, fftps.workspace,
+	fftps.dctIn=fftwf_plan_r2r_2d(n2, n1, fftps.workspace, fftps.workspace,
 								FFTW_REDFT10, FFTW_REDFT10,
 								FFTW_MEASURE);
-	fftps.dctOut=fftw_plan_r2r_2d(n2, n1, fftps.workspace, fftps.workspace,
+	fftps.dctOut=fftwf_plan_r2r_2d(n2, n1, fftps.workspace, fftps.workspace,
 								FFTW_REDFT01, FFTW_REDFT01,
 								FFTW_MEASURE);  
 
@@ -41,8 +41,8 @@ struct poisson_solver create_poisson_solver_workspace2d(int n1, int n2){
 void destroy_poisson_solver(struct poisson_solver fftps){
 	free(fftps.kernel);
 	free(fftps.workspace);
-	fftw_destroy_plan(fftps.dctIn);
-	fftw_destroy_plan(fftps.dctOut);
+	fftwf_destroy_plan(fftps.dctIn);
+	fftwf_destroy_plan(fftps.dctOut);
 }
 
 
@@ -62,9 +62,9 @@ void destroy_hull(struct convex_hull *hull){
 	free(hull->indices);
 }
 
-void add_point(double *u, struct convex_hull *hull, int i){
+void add_point(float *u, struct convex_hull *hull, int i){
 	int hc, ic1, ic2;
-	double oldSlope, slope;
+	float oldSlope, slope;
 	if(hull->hullCount<2){
 		hull->indices[1]=i;
 		hull->hullCount++;
@@ -73,8 +73,8 @@ void add_point(double *u, struct convex_hull *hull, int i){
 		ic1=hull->indices[hc-1];
 		ic2=hull->indices[hc-2];
 
-		oldSlope=(double)((u[ic1]-u[ic2])/(ic1-ic2));
-		slope=(double)((u[i]-u[ic1])/(i-ic1));
+		oldSlope=(float)((u[ic1]-u[ic2])/(ic1-ic2));
+		slope=(float)((u[i]-u[ic1])/(i-ic1));
 
 		if(slope>=oldSlope){
 			hc=hull->hullCount;
@@ -87,7 +87,7 @@ void add_point(double *u, struct convex_hull *hull, int i){
 	}
 }
 
-void get_convex_hull(double *u, struct convex_hull *hull, int n){
+void get_convex_hull(float *u, struct convex_hull *hull, int n){
 	int i;
 	hull->indices[0]=0;
 	hull->indices[1]=1;
@@ -97,31 +97,31 @@ void get_convex_hull(double *u, struct convex_hull *hull, int n){
 	}
 }
 
-void compute_dual_indicies(int *dualIndicies, double *u, struct convex_hull *hull, int n){
+void compute_dual_indicies(int *dualIndicies, float *u, struct convex_hull *hull, int n){
 
 	int counter=1;
 	int hc=hull->hullCount;
 	int i, ic1, ic2;
-	double s, slope;
+	float s, slope;
 	for(i=0;i<n;i++){    
 		s=(i+.5)/(n*1.0);
 		ic1=hull->indices[counter];
 		ic2=hull->indices[counter-1];
 
-		slope=(double)(n*(u[ic1]-u[ic2])/(ic1-ic2));
+		slope=(float)(n*(u[ic1]-u[ic2])/(ic1-ic2));
 		while(s>slope&&counter<hc-1){
 			counter++;
 			ic1=hull->indices[counter];
 			ic2=hull->indices[counter-1];
-			slope=(double)(n*(u[ic1]-u[ic2])/(ic1-ic2));
+			slope=(float)(n*(u[ic1]-u[ic2])/(ic1-ic2));
 		}
 		dualIndicies[i]=hull->indices[counter-1];   
 	}
 }
 
-void compute_dual(double *dual, double *u, int *dualIndicies, struct convex_hull *hull, int n){
+void compute_dual(float *dual, float *u, int *dualIndicies, struct convex_hull *hull, int n){
 	int i, index;
-	double s, x, v1, v2;
+	float s, x, v1, v2;
 	get_convex_hull(u, hull, n);
 	compute_dual_indicies(dualIndicies, u, hull, n);
 	for(i=0;i<n;i++){
@@ -139,7 +139,7 @@ void compute_dual(double *dual, double *u, int *dualIndicies, struct convex_hull
 	}
 }
 
-void transpose_doubles(double *transpose, double *data, int n1, int n2){  
+void transpose_floats(float *transpose, float *data, int n1, int n2){  
 	int i, j;
 	for(i=0;i<n2;i++){
 		for(j=0;j<n1;j++){     
@@ -148,30 +148,30 @@ void transpose_doubles(double *transpose, double *data, int n1, int n2){
 	}
 }
 
-void compute_2d_dual(double *dual, double *u, struct convex_hull *hull, int n1, int n2){
+void compute_2d_dual(float *dual, float *u, struct convex_hull *hull, int n1, int n2){
 	int pcount=n1*n2;
 	int n=fmax(n1,n2);
 	int *argmin=(int *)calloc(n,sizeof(int));
-	double *temp=(double *)calloc(pcount,sizeof(double));
-	memcpy(temp, u, pcount*sizeof(double));
+	float *temp=(float *)calloc(pcount,sizeof(float));
+	memcpy(temp, u, pcount*sizeof(float));
 
 	int i, j;
 	for(i=0;i<n2;i++){
 		compute_dual(&dual[i*n1], &temp[i*n1], argmin, hull, n1);
 	}
-	transpose_doubles(temp, dual, n1, n2);
+	transpose_floats(temp, dual, n1, n2);
 	for(i=0;i<n1*n2;i++){
 		dual[i]=-temp[i];
 	}
 	for(j=0;j<n1;j++){
 		compute_dual(&temp[j*n2], &dual[j*n2], argmin, hull, n2);   
 	}
-	transpose_doubles(dual, temp, n2, n1);
+	transpose_floats(dual, temp, n2, n1);
 
 	free(temp);
 	free(argmin);
 }
-void convexify(double *phi, double *dual, struct convex_hull *hull, int n1, int n2){
+void convexify(float *phi, float *dual, struct convex_hull *hull, int n1, int n2){
 	compute_2d_dual(dual, phi, hull, n1, n2);
 
 	compute_2d_dual(phi, dual, hull, n1, n2);
@@ -182,24 +182,24 @@ void alloc_fotSpace_2d(struct fotSpace *fotspace, int n1, int n2){
 	// 2D array in size [n2, n1], which is in row-major.
 	int n = fmax(n1, n2);
 	(*fotspace).fftps = create_poisson_solver_workspace2d(n1, n2);
-	(*fotspace).xMap = (double*)calloc((n1+1)*(n2+1), sizeof(double));
-	(*fotspace).yMap = (double*)calloc((n1+1)*(n2+1), sizeof(double));
-	(*fotspace).f = (double*)calloc(n1*n2, sizeof(double));
-	(*fotspace).g = (double*)calloc(n1*n2, sizeof(double));
-	(*fotspace).mu = (double*)calloc(n1*n2, sizeof(double));
-	(*fotspace).nu = (double*)calloc(n1*n2, sizeof(double));
-	(*fotspace).phi = (double*)calloc(n1*n2, sizeof(double));
-	(*fotspace).dual = (double*)calloc(n1*n2, sizeof(double));
-	(*fotspace).rho = (double*)calloc(n1*n2, sizeof(double));
-	(*fotspace).wd = (double*)calloc((*fotspace).nIter, sizeof(double));
-	(*fotspace).gn = (double*)calloc((*fotspace).nIter, sizeof(double));
+	(*fotspace).xMap = (float*)calloc((n1+1)*(n2+1), sizeof(float));
+	(*fotspace).yMap = (float*)calloc((n1+1)*(n2+1), sizeof(float));
+	(*fotspace).f = (float*)calloc(n1*n2, sizeof(float));
+	(*fotspace).g = (float*)calloc(n1*n2, sizeof(float));
+	(*fotspace).mu = (float*)calloc(n1*n2, sizeof(float));
+	(*fotspace).nu = (float*)calloc(n1*n2, sizeof(float));
+	(*fotspace).phi = (float*)calloc(n1*n2, sizeof(float));
+	(*fotspace).dual = (float*)calloc(n1*n2, sizeof(float));
+	(*fotspace).rho = (float*)calloc(n1*n2, sizeof(float));
+	(*fotspace).wd = (float*)calloc((*fotspace).nIter, sizeof(float));
+	(*fotspace).gn = (float*)calloc((*fotspace).nIter, sizeof(float));
 	alloc_hull(&((*fotspace).hull), n);
 }
 
 
-void init_map(double* xMap, double* yMap, int n1, int n2){
+void init_map(float* xMap, float* yMap, int n1, int n2){
 	int i, j;
-	double x, y;
+	float x, y;
 	for(i=0; i<n2+1; i++){
 		for(j=0; j<n1+1; j++){
 			x = j/(n1*1.0);
@@ -210,9 +210,9 @@ void init_map(double* xMap, double* yMap, int n1, int n2){
 	}
 }
 
-void init_phi_dual(double* phi, double *dual, int n1, int n2){
+void init_phi_dual(float* phi, float *dual, int n1, int n2){
 	int i, j;
-	double x, y, z;
+	float x, y, z;
 	for(i=0; i<n2; i++){
 		for(j=0; j<n1; j++){
 			x = (j+.5)/(n1*1.0);
@@ -224,9 +224,9 @@ void init_phi_dual(double* phi, double *dual, int n1, int n2){
 	}
 }
 
-double init_step_size(double* mu, double* nu, int n){
+float init_step_size(float* mu, float* nu, int n){
 	int i;
-	double max1, max2;
+	float max1, max2;
 	max1 = max2 = .0;
 	for(i=0; i<n; i++){
 		if(mu[i]>max1) max1 = mu[i];
@@ -235,15 +235,15 @@ double init_step_size(double* mu, double* nu, int n){
 	return fmax(max1, max2); // the step length will affect the results
 }
 
-void init_fotSpace_2d(struct fotSpace* fotspace, int n1, int n2, double* signal1, double* signal2){
+void init_fotSpace_2d(struct fotSpace* fotspace, int n1, int n2, float* signal1, float* signal2){
 	init_map((*fotspace).xMap, (*fotspace).yMap, n1, n2);
 	init_phi_dual((*fotspace).phi, (*fotspace).dual, n1, n2);
 	int n = fmax(n1, n2);
 	init_hull(&((*fotspace).hull), n);
-	memcpy((*fotspace).f, signal1, n1*n2*sizeof(double));
-	memcpy((*fotspace).g, signal2, n1*n2*sizeof(double));
-	memset((*fotspace).wd, 0, (*fotspace).nIter*sizeof(double));
-	memset((*fotspace).gn, 0, (*fotspace).nIter*sizeof(double));
+	memcpy((*fotspace).f, signal1, n1*n2*sizeof(float));
+	memcpy((*fotspace).g, signal2, n1*n2*sizeof(float));
+	memset((*fotspace).wd, 0, (*fotspace).nIter*sizeof(float));
+	memset((*fotspace).gn, 0, (*fotspace).nIter*sizeof(float));
 }
 
 void destroy_fotSpace_2d(struct fotSpace *fotspace){
@@ -260,14 +260,14 @@ void destroy_fotSpace_2d(struct fotSpace *fotspace){
 	destroy_poisson_solver((*fotspace).fftps);
 }
 
-int sgn(double x){   
+int sgn(float x){   
 	int truth=(x>0)-(x<0);
 	return truth;
 }
 
-double interpolate_function(double *function, double x, double y, int n1, int n2){
+float interpolate_function(float *function, float x, float y, int n1, int n2){
 	int xIndex, yIndex, xOther, yOther;
-	double xfrac, yfrac, v1, v2, v3, v4, v;
+	float xfrac, yfrac, v1, v2, v3, v4, v;
 
 	xIndex=fmin(fmax(x*n1-.5 ,0),n1-1);
 	yIndex=fmin(fmax(y*n2-.5 ,0),n2-1);
@@ -291,12 +291,12 @@ double interpolate_function(double *function, double x, double y, int n1, int n2
 	return v;  
 }
 
-void calc_pushforward_map(double *xMap, double *yMap, double *dual, int n1, int n2){
+void calc_pushforward_map(float *xMap, float *yMap, float *dual, int n1, int n2){
     
-	double xStep=1.0/n1;
-	double yStep=1.0/n2;
+	float xStep=1.0/n1;
+	float yStep=1.0/n2;
 	int i, j;
-	double x, y, dualxp, dualxm, dualyp, dualym;
+	float x, y, dualxp, dualxm, dualyp, dualym;
 #ifdef _OPENMP
 #pragma omp parallel default(shared) private(i,j,x,y,dualxp,dualxm,dualyp,dualym)
 #endif
@@ -324,7 +324,7 @@ void calc_pushforward_map(double *xMap, double *yMap, double *dual, int n1, int 
 
 }
 /*
-void calc_pushforward_map_gsl(double *xMap, double *yMap, double *dual, int n1, int n2)
+void calc_pushforward_map_gsl(float *xMap, float *yMap, float *dual, int n1, int n2)
 {
 	int i, j;
 	const gsl_interp2d_type *T = gsl_interp2d_bilinear;
@@ -332,8 +332,8 @@ void calc_pushforward_map_gsl(double *xMap, double *yMap, double *dual, int n1, 
 	gsl_interp_accel *xacc = gsl_interp_accel_alloc();
 	gsl_interp_accel *yacc = gsl_interp_accel_alloc();
 
-	double* xa = (double*)malloc(n1*sizeof(double));
-	double* ya = (double*)malloc(n2*sizeof(double));
+	float* xa = (float*)malloc(n1*sizeof(float));
+	float* ya = (float*)malloc(n2*sizeof(float));
 	for(i=0; i<n1; i++)
 		xa[i] = (i+.5)/n1;
 	for(i=0; i<n2; i++)
@@ -341,9 +341,9 @@ void calc_pushforward_map_gsl(double *xMap, double *yMap, double *dual, int n1, 
 	// initialize interpolation 
 	gsl_interp2d_init(spline, xa, ya, dual, n1, n2);
 
-	double xStep=1.0/n1;
-	double yStep=1.0/n2;
-	double x, y, dualxp, dualxm, dualyp, dualym;    
+	float xStep=1.0/n1;
+	float yStep=1.0/n2;
+	float x, y, dualxp, dualxm, dualyp, dualym;    
 	// interpolate values 
 #ifdef _OPENMP
 #pragma omp parallel default(shared) private(i,j,x,y,dualxp,dualxm,dualyp,dualym)
@@ -370,17 +370,17 @@ void calc_pushforward_map_gsl(double *xMap, double *yMap, double *dual, int n1, 
 
 }
 */
-void sampling_pushforward(double *rho, double *mu, double *xMap, double *yMap, int n1, int n2, double totalMass){
+void sampling_pushforward(float *rho, float *mu, float *xMap, float *yMap, int n1, int n2, float totalMass){
 	
 	int pcount=n1*n2;
-	memset(rho,0,pcount*sizeof(double));
+	memset(rho,0,pcount*sizeof(float));
 
-	double xCut=pow(1.0/n1,1.0/3);
-	double yCut=pow(1.0/n2,1.0/3);
+	float xCut=pow(1.0/n1,1.0/3);
+	float yCut=pow(1.0/n2,1.0/3);
 	int i, j, l, k;
 	int xIndex, yIndex, xOther, yOther, xSamples, ySamples;
-	double xStretch0, yStretch0, xStretch1, yStretch1, xStretch, yStretch, mass;
-	double xFrac, yFrac, factor, xPoint, yPoint, X, Y, a, b;
+	float xStretch0, yStretch0, xStretch1, yStretch1, xStretch, yStretch, mass;
+	float xFrac, yFrac, factor, xPoint, yPoint, X, Y, a, b;
 #ifdef _OPENMP
 #pragma omp parallel default(shared) private(i,j,l,k,mass,xStretch0,xStretch1,xStretch,yStretch0,yStretch1,yStretch, \
 										xSamples,ySamples,factor,a,b,xPoint,yPoint,X,Y,xIndex,yIndex,xFrac,yFrac,xOther,yOther)
@@ -446,7 +446,7 @@ void sampling_pushforward(double *rho, double *mu, double *xMap, double *yMap, i
 		}
 	}
 }
-	double sum=0;
+	float sum=0;
 	for(i=0;i<pcount;i++){
 		sum+=rho[i]/pcount;
 	}
@@ -456,21 +456,21 @@ void sampling_pushforward(double *rho, double *mu, double *xMap, double *yMap, i
 
 }
 
-double update_potential(struct poisson_solver fftps, double *phi, double *rho, double *nu, double sigma, int pcount){
-	double h1=0;
+float update_potential(struct poisson_solver fftps, float *phi, float *rho, float *nu, float sigma, int pcount){
+	float h1=0;
 	int i;
 	for(i=0;i<pcount;i++){
 		fftps.workspace[i]=(rho[i]-nu[i]);
 	}
 
-	fftw_execute(fftps.dctIn);
+	fftwf_execute(fftps.dctIn);
 
 	fftps.workspace[0]=0;
 	for(i=1;i<pcount;i++){
 		fftps.workspace[i]/=4*pcount*fftps.kernel[i];      
 	}
 
-	fftw_execute(fftps.dctOut);
+	fftwf_execute(fftps.dctOut);
 
 	for(i=0;i<pcount;i++){
 		phi[i]+=sigma*fftps.workspace[i];
@@ -481,9 +481,9 @@ double update_potential(struct poisson_solver fftps, double *phi, double *rho, d
 	return h1;
 }
 
-double step_update(double sigma, double value, double oldValue, double gradSq, double scaleUp, double scaleDown, double upper, double lower){
+float step_update(float sigma, float value, float oldValue, float gradSq, float scaleUp, float scaleDown, float upper, float lower){
     
-	double diff=value-oldValue;
+	float diff=value-oldValue;
 
 	if(diff>gradSq*sigma*upper){
 		return sigma*scaleUp;
@@ -495,10 +495,10 @@ double step_update(double sigma, double value, double oldValue, double gradSq, d
     
 }
 
-double compute_w2(double *phi, double *dual, double *mu, double *nu, int n1, int n2){   
+float compute_w2(float *phi, float *dual, float *mu, float *nu, int n1, int n2){   
 	int pcount=n1*n2; 
-	double value=0.;
-	double x, y;
+	float value=0.;
+	float x, y;
 	int i, j;  
 	for(i=0;i<n2;i++){
 		for(j=0;j<n1;j++){
@@ -511,16 +511,16 @@ double compute_w2(double *phi, double *dual, double *mu, double *nu, int n1, int
 	return value; 
 }
 
-double compute_l2_fot2d(double *mu, double *nu, double *phi, double *dual, double *rho,  
-		double *xMap, double *yMap, double totalMass, struct poisson_solver fftps, struct convex_hull hull, 
-		double sigma, int maxIters, int n1, int n2, double *values, double *grad_norms, int verbose){
+float compute_l2_fot2d(float *mu, float *nu, float *phi, float *dual, float *rho,  
+		float *xMap, float *yMap, float totalMass, struct poisson_solver fftps, struct convex_hull hull, 
+		float sigma, int maxIters, int n1, int n2, float *values, float *grad_norms, int verbose){
 	int i, j;
 	int pcount = n1*n2;
 
 	// initialization
-	memcpy(rho, mu, pcount*sizeof(double));
+	memcpy(rho, mu, pcount*sizeof(float));
 
-	double oldValue, value, scaleDown, scaleUp, upper, lower, gradSq, x, y;
+	float oldValue, value, scaleDown, scaleUp, upper, lower, gradSq, x, y;
 	scaleDown = .8;
 	scaleUp = 1./scaleDown;
 	upper = .75;
@@ -528,10 +528,10 @@ double compute_l2_fot2d(double *mu, double *nu, double *phi, double *dual, doubl
 	oldValue = compute_w2(phi, dual, mu, nu, n1, n2);
 
 	clock_t time1, time2;
-	double time_update_potential = 0;
-	double time_convexify = 0;
-	double time_pushforward = 0;
-	double time_calc_map = 0;
+	float time_update_potential = 0;
+	float time_convexify = 0;
+	float time_pushforward = 0;
+	float time_calc_map = 0;
 	for(i=0; i<maxIters; i++){
 		time1 = clock(); 
 		gradSq = update_potential(fftps, phi, rho, nu, sigma, pcount);
@@ -603,7 +603,7 @@ double compute_l2_fot2d(double *mu, double *nu, double *phi, double *dual, doubl
 	return oldValue;
 }
 
-double fotGradient2d(struct fotSpace* otspace, double* grad, int n1, int n2, int verbose)
+float fotGradient2d(struct fotSpace* otspace, float* grad, int n1, int n2, int verbose)
 {
 /*2d quadratic wasserstein distance using back-and-forth method with different normalization
 INPUT: 
@@ -619,8 +619,8 @@ TO DO:
 */
 	int i, pcount;
 	pcount = n1 * n2;
-	double wd, sigma, sum;
-	double term = 0.;
+	float wd, sigma, sum;
+	float term = 0.;
 
 	// normalize input signals
 	sum = normalize((*otspace).mu, (*otspace).f, (*otspace).nu, (*otspace).g, pcount, 1);

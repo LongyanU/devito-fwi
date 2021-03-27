@@ -2,7 +2,7 @@
 SRCDIR = src
 TARGETDIR = bin
 
-all: BFM2D 
+all: BFM2D
 
 BFM2D:
 	cd $(SRCDIR); make bfm2d

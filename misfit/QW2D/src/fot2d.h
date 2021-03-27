@@ -35,13 +35,13 @@
 
 /* poisson solver */
 struct poisson_solver{
-	fftw_plan dctIn;
-	fftw_plan dctOut;
-	double *kernel;
-	double *workspace;
+	fftwf_plan dctIn;
+	fftwf_plan dctOut;
+	float *kernel;
+	float *workspace;
 };
 
-double *create_negative_laplace_kernel2d(int n1, int n2);
+float *create_negative_laplace_kernel2d(int n1, int n2);
 
 struct poisson_solver create_poisson_solver_workspace2d(int n1, int n2);
 
@@ -59,57 +59,57 @@ void init_hull(struct convex_hull *hull, int n);
 
 void destroy_hull(struct convex_hull *hull);
 
-void add_point(double *u, struct convex_hull *hull, int i);
+void add_point(float *u, struct convex_hull *hull, int i);
 
-void get_convex_hull(double *u, struct convex_hull *hull, int n);
+void get_convex_hull(float *u, struct convex_hull *hull, int n);
 
-void compute_dual_indicies(int *dualIndicies, double *u, struct convex_hull *hull, int n);
+void compute_dual_indicies(int *dualIndicies, float *u, struct convex_hull *hull, int n);
 
-void compute_dual(double *dual, double *u, int *dualIndicies, struct convex_hull *hull, int n);
+void compute_dual(float *dual, float *u, int *dualIndicies, struct convex_hull *hull, int n);
 
-void transpose_doubles(double *transpose, double *data, int n1, int n2);
+void transpose_floats(float *transpose, float *data, int n1, int n2);
 
-void compute_2d_dual(double *dual, double *u, struct convex_hull *hull, int n1, int n2);
+void compute_2d_dual(float *dual, float *u, struct convex_hull *hull, int n1, int n2);
 
-void convexify(double *phi, double *dual, struct convex_hull *hull, int n1, int n2);
+void convexify(float *phi, float *dual, struct convex_hull *hull, int n1, int n2);
 
 /* fast optimal transport kernels */
 struct fotSpace
 {
-	double *xMap, *yMap;// domain
-	double *f, *g; 		// original input signals
-	double *mu, *nu;	// probability densities
-	double *wd, *gn;// w2 values and H^-1 residuals (L2 norm of gradient) in iterations
-	double *phi, *dual, *rho;
+	float *xMap, *yMap;// domain
+	float *f, *g; 		// original input signals
+	float *mu, *nu;	// probability densities
+	float *wd, *gn;// w2 values and H^-1 residuals (L2 norm of gradient) in iterations
+	float *phi, *dual, *rho;
 	struct poisson_solver fftps;
 	struct convex_hull hull;
-	double step_scale;
+	float step_scale;
 	int nIter;
 };
 
 void alloc_fotSpace_2d(struct fotSpace *fotspace, int n1, int n2);
 
-void init_fotSpace_2d(struct fotSpace* fotspace, int n1, int n2, double* signal1, double* signal2);
+void init_fotSpace_2d(struct fotSpace* fotspace, int n1, int n2, float* signal1, float* signal2);
 
 void destroy_fotSpace_2d(struct fotSpace *fotspace);
 
-double interpolate_function(double *function, double x, double y, int n1, int n2);
+float interpolate_function(float *function, float x, float y, int n1, int n2);
 
-void calc_pushforward_map(double *xMap, double *yMap, double *dual, int n1, int n2);
+void calc_pushforward_map(float *xMap, float *yMap, float *dual, int n1, int n2);
 
-void calc_pushforward_map_gsl(double *xMap, double *yMap, double *dual, int n1, int n2);
+void calc_pushforward_map_gsl(float *xMap, float *yMap, float *dual, int n1, int n2);
 
-void sampling_pushforward(double *rho, double *mu, double *xMap, double *yMap, int n1, int n2, double totalMass);
+void sampling_pushforward(float *rho, float *mu, float *xMap, float *yMap, int n1, int n2, float totalMass);
 
-double update_potential(struct poisson_solver fftps, double *phi, double *rho, double *nu, double sigma, int pcount);
+float update_potential(struct poisson_solver fftps, float *phi, float *rho, float *nu, float sigma, int pcount);
 
-double step_update(double sigma, double value, double oldValue, double gradSq, 
-	double scaleUp, double scaleDown, double upper, double lower);
+float step_update(float sigma, float value, float oldValue, float gradSq, 
+	float scaleUp, float scaleDown, float upper, float lower);
 
-double compute_w2(double *phi, double *dual, double *mu, double *nu, int n1, int n2);
+float compute_w2(float *phi, float *dual, float *mu, float *nu, int n1, int n2);
 
-double compute_l2_fot2d(double *mu, double *nu, double *phi, double *dual, double *rho,  
-		double *xMap, double *yMap, double totalMass, struct poisson_solver fftps, struct convex_hull hull, 
-		double sigma, int maxIters, int n1, int n2, double *values, double *grad_norms, int verbose);
+float compute_l2_fot2d(float *mu, float *nu, float *phi, float *dual, float *rho,  
+		float *xMap, float *yMap, float totalMass, struct poisson_solver fftps, struct convex_hull hull, 
+		float sigma, int maxIters, int n1, int n2, float *values, float *grad_norms, int verbose);
 
-double fotGradient2d(struct fotSpace* otspace, double* grad, int n1, int n2, int verbose);
+float fotGradient2d(struct fotSpace* otspace, float* grad, int n1, int n2, int verbose);

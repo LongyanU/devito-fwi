@@ -9,10 +9,10 @@
 
 #include "normalize.h"
 
-double normalize(double *fn, double *f, double *gn, double *g, int n, int flag)
+float normalize(float *fn, float *f, float *gn, float *g, int n, int flag)
 {
 	int i;
-	double sum1, sum2;
+	float sum1, sum2;
 	sum1 = 0.;
 	sum2 = 0.;
 	for(i=0; i<n; i++){
@@ -20,8 +20,8 @@ double normalize(double *fn, double *f, double *gn, double *g, int n, int flag)
 		sum2 += g[i];
 	}
 	if(flag){
-		sum1 /= (double)n;
-		sum2 /= (double)n;
+		sum1 /= (float)n;
+		sum2 /= (float)n;
 	}
 	for(i=0; i<n; i++){
 		if(sum1 > 0)

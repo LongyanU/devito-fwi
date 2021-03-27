@@ -5,6 +5,6 @@
 #define EPS 1e-6
 #endif
 
-double normalize(double *fn, double *f, double *gn, double *g, int n, int flag);
+float normalize(float *fn, float *f, float *gn, float *g, int n, int flag);
 
 #endif
