@@ -2,7 +2,7 @@ from devito import Function
 from seismic import Model, Receiver, AcquisitionGeometry
 from seismic.acoustic import AcousticWaveSolver
 import numpy as np
-from scipy import optimize
+from scipy import interpolate
 from distributed import wait
 from seismic.filter import bandpass, lowpass, highpass
 from copy import deepcopy
@@ -43,6 +43,18 @@ class Filter(object):
 		return seismic_filter(data, self.filter_type, self.freqmin, 
 			self.freqmax, self.df, self.corners, self.zerophase, self.axis)
 
+
+def resample(x, t, t0, order=3):
+	dt = t[1] - t[0]
+	dt0 = t0[1] - t0[0]
+	if np.isclose(dt, dt0):
+		return x
+	nsamples, ntraces = x.shape
+	new_x = np.zeros((t.size, ntraces), dtype=np.float32)
+	for i in range(ntraces):
+		tck = interpolate.splrep(t0, x[:, i], k=order)
+		new_x[:, i] = interpolate.splev(t, tck)
+	return new_x
 
 def fm_single(geometry, save=False):
 	"""Modeling function for acoustic function
@@ -117,7 +129,7 @@ def fix_source_illumination(geometry, g):
 	return g
 
 def fwi_obj_single(geometry, obs, misfit_func, 
-			filter_func=None, resample_dt=None, time_axis=None):
+			filter_func=None, resample_dt=None):
 
 	grad = Function(name="grad", grid=geometry.model.grid)
 
@@ -128,8 +140,6 @@ def fwi_obj_single(geometry, obs, misfit_func,
 
 	if resample_dt is None:
 		resample_dt = geometry.dt
-	if time_axis is None:
-		time_axis = geometry.time_axis
 	if resample_dt is not None:
 		obs = deepcopy(obs).resample(resample_dt) # Important: use deepcopy to avoid changing the orignal data
 		pred = pred.resample(resample_dt)	
@@ -142,11 +152,12 @@ def fwi_obj_single(geometry, obs, misfit_func,
 	fval, residual_data = misfit_func(syn_data, obs_data)
 
 	residual = Receiver(name="rec", grid=geometry.model.grid, 
-				time_range=time_axis, 
-				coordinates=geometry.rec_positions)	
-	residual.data[:] = residual_data[:]
-	if resample_dt is not None:
-		residual = residual.resample(geometry.dt)
+				time_range=geometry.time_axis, 
+				coordinates=geometry.rec_positions)
+
+	residual.data[:] = resample(residual_data, 
+					geometry.time_axis.time_values,
+					pred.time_values)[:]
 
 	solver.gradient(rec=residual, u=wfd, vp=geometry.model.vp, grad=grad)
 
@@ -173,7 +184,7 @@ def fwi_obj_multi(geometry, obs, misfit_func,
 					f0=geometry.f0, src_type=geometry.src_type, 
 					filter=geometry._filter)
 		fval_, grad_, _, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
-							filter_func, geometry.dt, geometry.time_axis)
+							filter_func, geometry.dt)
 		fval += fval_
 		grad += grad_
 		illum += illum_
@@ -193,7 +204,7 @@ def fwi_obj_multi_parallel(client, geometry, obs, misfit_func,
 					f0=geometry.f0, src_type=geometry.src_type, 
 					filter=geometry._filter)
 		futures.append(client.submit(fwi_obj_single, geom_i, obs[i], 
-						misfit_func, geometry.dt, geometry.time_axis))
+						misfit_func, geometry.dt))
 	wait(futures)
 	fval = .0
 	grad = np.zeros(geometry.model.shape)
