@@ -182,7 +182,7 @@ class bfmx(object):
 		os.remove(os.path.join(self.path, 'obs_data'))
 		os.remove(os.path.join(self.path, 'grad_data'))
 		os.remove(os.path.join(self.path, 'loss'))
-		os.remove(os.path.join(self.path, 'bfm.log'))
+		#os.remove(os.path.join(self.path, 'bfm.log'))
 
 		return loss, grad
 
