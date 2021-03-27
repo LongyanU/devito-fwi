@@ -6,7 +6,6 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from fwi import fm_single
 from misfit import qWasserstein
-from bfm import bfm
 
 def wavelet(dt, n, freq, delay):
 	t = np.arange(0, n) * dt
@@ -18,8 +17,8 @@ def wavelet(dt, n, freq, delay):
 	return y.reshape(n, 1)
 
 w1d = qWasserstein(trans_type='linear', gamma=1.01, method='1d')
-bfm_solver = bfm(num_steps=10, step_scale=8., verbose=True)
-w2d = qWasserstein(trans_type='linear', gamma=1.1, method='2d', bfm_solver=bfm_solver)
+w2d = qWasserstein(trans_type='linear', gamma=1.01, method='2d', 
+				num_steps=10, step_scale=1.)
 
 # dt = 0.001
 # nt = 1000
@@ -59,6 +58,9 @@ ax[0][1].imshow(grad1, aspect=shape[1]/shape[0])
 ax[1][0].imshow(grad2, aspect=shape[1]/shape[0])
 ax[1][1].imshow(grad1, aspect=shape[1]/shape[0])
 plt.show()
+
+grad1.astype(np.float32).tofile('./result/grad1d')
+grad2.astype(np.float32).tofile('./result/grad2d')
 
 # n1 = 512   # x axis
 # n2 = 512   # y axis
