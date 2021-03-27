@@ -45,7 +45,7 @@ if __name__=='__main__':
 	gtol = args.gtol	
 	nsources = args.nsrc
 	maxiter = args.maxiter
-	print('---------------- Parameter Setting ------------',
+	print('---------------- Parameter Setting ------------\n',
 		'\t Result dir: %s \t Misfit function: %d \t Precondition: %d\n'%(result_dir, misfit_type, precond), 
 		'\t Use mask: %d \t Filtering source: %d \t Resample rate: %f\n'%(use_bathy, use_filter, resample_dt),
 		'\t ftol: %e \t gtol: %e \t nsrc: %d\n'%(ftol, gtol, nsources),

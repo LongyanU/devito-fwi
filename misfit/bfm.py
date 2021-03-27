@@ -190,4 +190,4 @@ class bfmx(object):
 		self.setup(f, g)
 		loss, grad = self.solve()
 
-		return loss, grad.astype(f.dtype)
+		return loss, grad
