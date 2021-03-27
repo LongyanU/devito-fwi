@@ -25,6 +25,8 @@ parser.add_argument('--filter', type=int, default=0, help='filtering data')
 parser.add_argument('--resample', type=float, default=5., help='resample dt')
 parser.add_argument('--ftol', type=float, default=1e-2, help='Optimizing loss tolerance')
 parser.add_argument('--gtol', type=float, default=1e-4, help='Optimizing gradient norm tolerance')
+parser.add_argument('--nsrc', type=int, default=21, help='number of shots')
+parser.add_argument('--maxiter', type=int, default=500, help='FWI iteration')
 
 if __name__=='__main__':
 	# Parse argument
@@ -41,6 +43,16 @@ if __name__=='__main__':
 	resample_dt = args.resample
 	ftol = args.ftol
 	gtol = args.gtol	
+	nsources = args.nsrc
+	maxiter = args.maxiter
+	print('---------------- Parameter Setting ------------',
+		'\t Result dir: %s \t Misfit function: %d \t Precondition: %d\n'%(result_dir, misfit_type, precond), 
+		'\t Use mask: %d \t Filtering source: %d \t Resample rate: %f\n'%(use_bathy, use_filter, resample_dt),
+		'\t ftol: %e \t gtol: %e \t nsrc: %d\n'%(ftol, gtol, nsources),
+		'\t maxiter:%d\n'%(maxiter),		
+		'-------------------------------------------------'
+		)
+
 	# Set up velocity model
 	shape = (201, 201)      # Number of grid points (nx, nz).
 	spacing = (10., 10.)    # Grid spacing in m. The domain size is now 1km by 1km.
@@ -138,8 +150,6 @@ if __name__=='__main__':
 	# ftol = 2e-2 converge when |fk - fkp1|/max(|fk|, |fkp1|, 1) < ftol
 	# gtol = 1e-4	
 	# for Wasserstein loss, it is always very small (~1e-6) depending on problems
-
-	maxiter = 50
 	maxls = 5
 	L = 10
 	"""

@@ -168,8 +168,6 @@ if __name__=='__main__':
 	# gtol = 1e-4	
 	# for Wasserstein loss, it is always very small (~1e-6) depending on problems
 
-
-	maxiter = 500
 	maxls = 5
 	L = 10
 	"""
