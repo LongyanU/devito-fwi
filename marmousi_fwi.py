@@ -7,7 +7,7 @@ from scipy import optimize
 import matplotlib.pyplot as plt
 
 from fwi import Filter, fm_multi, fwi_obj_multi, fwi_loss
-from misfit import least_square, qWasserstein, bfm
+from misfit import least_square, qWasserstein
 
 import argparse, os, shutil
 from time import time
@@ -25,6 +25,8 @@ parser.add_argument('--filter', type=int, default=0, help='filtering data')
 parser.add_argument('--resample', type=float, default=6., help='resample dt')
 parser.add_argument('--ftol', type=float, default=1e-2, help='Optimizing loss tolerance')
 parser.add_argument('--gtol', type=float, default=1e-4, help='Optimizing gradient norm tolerance')
+parser.add_argument('--nsrc', type=int, default=21, help='number of shots')
+parser.add_argument('--maxiter', type=int, default=500, help='FWI iteration')
 
 if __name__=='__main__':
 	# Parse argument
@@ -41,9 +43,19 @@ if __name__=='__main__':
 	resample_dt = args.resample
 	ftol = args.ftol
 	gtol = args.gtol
+	nsources = args.nsrc
+	maxiter = args.maxiter
+	print('---------------- Parameter Setting ------------',
+		'\t Result dir: %s \t Misfit function: %d \t Precondition: %d\n'%(result_dir, misfit_type, precond), 
+		'\t Use mask: %d \t Filtering source: %d \t Resample rate: %f\n'%(use_bathy, use_filter, resample_dt),
+		'\t ftol: %e \t gtol: %e \t nsrc: %d\n'%(ftol, gtol, nsources),
+		'\t maxiter:%d\n'%(maxiter),
+		'-------------------------------------------------'
+		)
+
 	# Setup velocity model
 	shape = (300, 106)      # Number of grid points (nx, nz).
-	spacing = (30., 30.)    # Grid spacing in m. The domain size is now 1km by 1km.
+	spacing = (25., 25.)    # Grid spacing in m. The domain size is now 1km by 1km.
 	origin = (0, 0)         # Need origin to define relative source and receiver locations.
 	space_order = 8
 	nbl = 40
@@ -51,7 +63,7 @@ if __name__=='__main__':
 	dt = 2.
 
 	true_vp = np.fromfile("./model_data/SMARMN/vp.true", dtype=np.float32).reshape(shape)/1000
-	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth_10", dtype=np.float32).reshape(shape)/1000
+	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth_20", dtype=np.float32).reshape(shape)/1000
 	bathy_mask = np.ones(shape, dtype=np.float32)
 	bathy_mask[:, :7] = 0
 	if not use_bathy:
@@ -66,23 +78,22 @@ if __name__=='__main__':
 
 	# Set up acquisiton geometry
 	t0 = 0.
-	tn = 4500. 
-	f0 = 0.005
+	tn = 4000. 
+	f0 = 0.007
 	# Set up source geometry, but define 5 sources instead of just one.
-	nsources = 21
 	src_coordinates = np.empty((nsources, 2))
 	src_coordinates[:, 0] = np.linspace(0, true_model.domain_size[0], num=nsources)
-	src_coordinates[:, -1] = 30.  # Source depth is 20m
+	src_coordinates[:, -1] = 2*spacing[0]  # Source depth
 
 	# Initialize receivers for synthetic and imaging data
 	nreceivers = shape[0]
 	rec_coordinates = np.empty((nreceivers, 2))
 	rec_coordinates[:, 0] = np.linspace(spacing[0], true_model.domain_size[0] - spacing[0], num=nreceivers)
-	rec_coordinates[:, 1] = 30.    # Receiver depth
+	rec_coordinates[:, 1] = 2*spacing[0]    # Receiver depth
 
 	filt_func = None
 	if use_filter:
-		filt_func = Filter(filter_type='highpass', freqmin=2, 
+		filt_func = Filter(filter_type='highpass', freqmin=3, 
 					corners=6, df=1000/dt)		
 	# Set up geometry objects for observed and predicted data
 	geometry1 = AcquisitionGeometry(true_model, rec_coordinates, src_coordinates, t0, tn, 
@@ -102,8 +113,8 @@ if __name__=='__main__':
 	plt.clf()
 
 	qWmetric1d = qWasserstein(gamma=1.01, method='1d')
-	bfm_solver = bfm(num_steps=10, step_scale=1.)
-	qWmetric2d = qWasserstein(gamma=1.01, method='2d', bfm_solver=bfm_solver)
+	qWmetric2d = qWasserstein(gamma=1.01, method='2d', 
+							num_steps=10, step_scale=1.)
 
 	if misfit_type == 0:
 		misfit_func = least_square
@@ -125,10 +136,9 @@ if __name__=='__main__':
 		plt.clf()
 
 	model_err = []
-	k = 0
 	def fwi_callback(xk):
 		m = 1. / (true_vp.reshape(-1).astype(np.float64))**2
-		model_err.append(np.linalg.norm((xk-m)/m))
+		k = len(model_err)
 		if k%10==0:
 			v = np.sqrt(1./xk)
 			v.tofile(os.path.join(result_dir, 
@@ -138,7 +148,7 @@ if __name__=='__main__':
 					'marmousi_iter'+str(k)+'_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
 					bbox_inches='tight')
 			plt.clf()
-		k += 1	
+		model_err.append(np.linalg.norm((xk-m)/m))	
 	# Box contraints
 	vmin = 1.5    # do not allow velocities slower than water
 	vmax = 5.2
@@ -150,8 +160,6 @@ if __name__=='__main__':
 	# ftol = 2e-2 converge when |fk - fkp1|/max(|fk|, |fkp1|, 1) < ftol
 	# gtol = 1e-4	
 	# for Wasserstein loss, it is always very small (~1e-6) depending on problems
-
-	maxiter = 500
 	maxls = 5
 	L = 10
 	"""

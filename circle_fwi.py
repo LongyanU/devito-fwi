@@ -7,7 +7,7 @@ from scipy import optimize
 import matplotlib.pyplot as plt
 
 from fwi import Filter, fm_multi, fwi_obj_multi, fwi_loss
-from misfit import least_square, qWasserstein, bfm
+from misfit import least_square, qWasserstein
 
 import argparse, os, shutil
 from time import time
@@ -98,8 +98,8 @@ if __name__=='__main__':
 	plt.clf()
 
 	qWmetric1d = qWasserstein(gamma=1.01, method='1d')
-	bfm_solver = bfm(num_steps=10, step_scale=1.)
-	qWmetric2d = qWasserstein(gamma=1.01, method='2d', bfm_solver=bfm_solver)
+	qWmetric2d = qWasserstein(gamma=1.01, method='2d', 
+							num_steps=10, step_scale=1.)
 
 	if misfit_type == 0:
 		misfit_func = least_square
