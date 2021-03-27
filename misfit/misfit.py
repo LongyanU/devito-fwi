@@ -1,4 +1,4 @@
-from bfm import bfm
+from .bfm import bfmx as bfm_solver
 import numpy as np
 
 
@@ -9,11 +9,12 @@ def least_square(x, y):
 	return fval, residal
 
 class qWasserstein(object):
-	def __init__(self, trans_type='linear', gamma=1.0, method='1d', bfm_solver=None):
+	def __init__(self, trans_type='linear', gamma=1.0, method='1d', 
+				num_steps=10, step_scale=1.):
 		self.gamma = gamma
 		assert method in ['1d', '2d']
 		self.method = method
-		self.bfm = bfm_solver
+		self.bfm = bfm_solver(num_steps=num_steps, step_scale=step_scale)
 		self.trans_type = trans_type
 		
 	def _transform(self, f, g):
@@ -85,9 +86,7 @@ class qWasserstein(object):
 			ntr = shape[1]
 		if self.method == '2d' and ntr <= 1:
 			raise ValueError("Can not use 2d method for 1D input.")
-		if self.method == '2d' and self.bfm is None:
-			# If self.bfm is not set up yet, set it in default
-			self.bfm = bfm(shape=(shape[1], shape[0]))
+
 		# First transform signal to being positive
 		mu, nu, d = self._transform(f, g)
 		loss = 0

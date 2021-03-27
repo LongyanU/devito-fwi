@@ -3,6 +3,9 @@ from time import time
 import numpy as np
 import numpy.ma as ma
 from scipy.fftpack import dctn, idctn
+import os
+import subprocess
+import sys
 
 def dct2(x):
 	return dctn(x, norm='ortho')
@@ -137,3 +140,55 @@ class bfm(object):
 		grad = psi - (psi * self.mu).sum()/psi.size
 
 		return value, grad
+
+
+class bfmx(object):
+	"""Solve quadratic cost optimal transport using the back-and-forth method
+	This will call the executable bfm2d in QW2D/bin
+	"""	
+	def __init__(self, num_steps=10, step_scale=8.):
+		path = os.path.abspath(__file__)
+		self.path = os.path.dirname(path)		
+		self.solver = os.path.join(self.path, 'QW2D/bin/bfm2d')
+		self.num_steps = num_steps
+		self.step_scale = step_scale
+
+	def setup(self, f, g):
+		self.orig_dtype = f.dtype
+		self.n1, self.n2 = f.shape
+		f.astype(np.float64).transpose().tofile(os.path.join(self.path, 'syn_data'))
+		g.astype(np.float64).transpose().tofile(os.path.join(self.path, 'obs_data'))
+
+	def solve(self):
+		try:
+			f = open(os.path.join(self.path, 'bfm.log'), 'w')
+			subprocess.run([self.solver+' '+str(self.n1)+' '+
+						str(self.n2)+' '+str(self.num_steps)+' '+
+						str(self.step_scale)+' '+str(1)+' '+self.path],
+						shell=True, stdout=f, check=True)
+		except subprocess.CalledProcessError as err:
+			print("""    BFM FAILED  """)
+			sys.exit(-1)
+		except OSError:
+			print("""    BFM FAILED  """)
+			sys.exit(-1)
+		finally:
+			f.close()
+
+		grad = np.fromfile(os.path.join(self.path, 'grad_data'), dtype=np.float64)
+		grad = grad.reshape(self.n2, self.n1).transpose()
+		loss = np.loadtxt(os.path.join(self.path, 'loss'))
+
+		os.remove(os.path.join(self.path, 'syn_data'))
+		os.remove(os.path.join(self.path, 'obs_data'))
+		os.remove(os.path.join(self.path, 'grad_data'))
+		os.remove(os.path.join(self.path, 'loss'))
+		os.remove(os.path.join(self.path, 'bfm.log'))
+
+		return loss, grad
+
+	def gradient(self, f, g):
+		self.setup(f, g)
+		loss, grad = self.solve()
+
+		return loss, grad
