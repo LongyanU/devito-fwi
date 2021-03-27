@@ -1,6 +1,5 @@
 from seismic import Model, AcquisitionGeometry, Receiver
 from seismic import plot_shotrecord, plot_velocity, plot_image
-from seismic.wavelet import Ricker, Gabor, DGauss
 import numpy as np
 from scipy import optimize
 from distributed import Client, wait, LocalCluster
