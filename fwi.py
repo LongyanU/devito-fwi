@@ -236,7 +236,5 @@ def fwi_loss(x, geometry, obs, misfit_func,
 	fval, grad = fwi_obj_multi(geometry, obs, misfit_func, 
 						filter_func, mask, precond, calc_grad)
 
-	print("Loss: %f"%fval)
-
 	return fval, grad.flatten().astype(np.float64)
 
