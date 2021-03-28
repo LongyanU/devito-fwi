@@ -52,7 +52,7 @@ if __name__=='__main__':
 	maxiter = args.maxiter
 	print('---------------- Parameter Setting ------------\n',
 		'\t Result dir: %s \t Misfit function: %d \t Precondition: %d\n'%(result_dir, misfit_type, precond), 
-		'\t Use mask: %d \t Filtering source: %d \t Resample rate: %f\n'%(use_bathy, use_filter, resample_dt),
+		'\t Use mask: %d \t Filtering source: %d \t Resample rate: %.2f\n'%(use_bathy, use_filter, resample_dt),
 		'\t ftol: %e \t gtol: %e \t nsrc: %d\n'%(ftol, gtol, nsources),
 		'\t maxiter:%d \t maxls: %d \t init step length: %.3f\n'%(maxiter, args.maxls, args.steplen),		
 		'-------------------------------------------------'

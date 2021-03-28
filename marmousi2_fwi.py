@@ -25,11 +25,11 @@ parser.add_argument('--check-gradient', type=int, default=0,
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
 parser.add_argument('--resample', type=float, default=0., help='resample dt, default 0 will not resample')
-parser.add_argument('--ftol', type=float, default=1e-2, help='Optimizing loss tolerance')
-parser.add_argument('--gtol', type=float, default=1e-4, help='Optimizing gradient norm tolerance')
+parser.add_argument('--ftol', type=float, default=1e-5, help='Optimizing loss tolerance')
+parser.add_argument('--gtol', type=float, default=1e-10, help='Optimizing gradient norm tolerance')
 parser.add_argument('--nsrc', type=int, default=21, help='number of shots')
-parser.add_argument('--maxiter', type=int, default=500, help='FWI iteration')
-parser.add_argument('--steplen', type=float, default=0.05, help='initial step length for line search')
+parser.add_argument('--maxiter', type=int, default=300, help='FWI iteration')
+parser.add_argument('--steplen', type=float, default=0.1, help='initial step length for line search')
 parser.add_argument('--maxls', type=int, default=5, help='max number of line search in each iteration')
 
 if __name__=='__main__':
@@ -51,7 +51,7 @@ if __name__=='__main__':
 	maxiter = args.maxiter
 	print('---------------- Parameter Setting ------------\n',
 		'\t Result dir: %s \t Misfit function: %d \t Precondition: %d\n'%(result_dir, misfit_type, precond), 
-		'\t Use mask: %d \t Filtering source: %d \t Resample rate: %f\n'%(use_bathy, use_filter, resample_dt),
+		'\t Use mask: %d \t Filtering source: %d \t Resample rate: %.2f\n'%(use_bathy, use_filter, resample_dt),
 		'\t ftol: %e \t gtol: %e \t nsrc: %d\n'%(ftol, gtol, nsources),
 		'\t maxiter:%d \t maxls: %d \t init step length: %.3f\n'%(maxiter, args.maxls, args.steplen),	
 		'-------------------------------------------------'
