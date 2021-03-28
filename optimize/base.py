@@ -46,11 +46,11 @@ class base(object):
 	def setup(self):
 		""" Set up nonlinear optimization machinery
 		"""
+		self.writer = Writer(self.log_path)		
 		# prepare line search machinery
 		self.line_search = getattr(line_search, self.line_search_method)(
 				step_count_max=self.max_ls, path=self.log_path
 			)
-		self.writer = Writer(self.log_path)
 		self.check_path()
 
 	def compute_direction(self, m, g):
