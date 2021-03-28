@@ -34,6 +34,10 @@ class base(object):
 		self.step_len_max = step_len_max
 		self.verbose = verbose
 		self.restarted = 0
+
+	def name(self):
+		raise NotImplementedError("")
+
 	def setup(self):
 		""" Set up nonlinear optimization machinery
 		"""
@@ -139,7 +143,7 @@ class Writer(object):
 	def __init__(self, path='.'):
 		self.path = abspath(path)
 		try:
-			os.mkdir(path)
+			os.makedirs(path)
 		except:
 			raise IOError
 		self.__call__('step_count', 0)

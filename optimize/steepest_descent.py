@@ -1,8 +1,8 @@
 
-from optimizer import SteepestDescent
+from optimizer import steepest_descent
 from .base import base
 
-class steepest_descent(base):
+class SteepestDescent(base):
 	"""Steepest descent algorithm
 	"""
 	def __init__(self, ls_method='Bracket', max_ls=5, 
@@ -12,6 +12,8 @@ class steepest_descent(base):
 					step_len_init=step_len_init, step_len_max=step_len_max, 
 					log_path=log_path, verbose=verbose)
 
+	def name(self):
+		return 'steepest descent'
 
 	def setup(self):
 		super(SteepestDescent, self).setup()

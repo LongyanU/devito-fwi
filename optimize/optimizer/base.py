@@ -9,6 +9,6 @@ class Base(object):
 
 	def compute_direction(self, m, g):
 
-		return -g
+		return -g, 0
 
-SteepestDescent = Base
+steepest_descent = Base

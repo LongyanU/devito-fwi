@@ -1,5 +1,6 @@
 import numpy as np
 from fwi import fwi_loss
+import optimize
 
 def divides(i, j):
 	"""True if j divides i"""
@@ -11,11 +12,12 @@ def divides(i, j):
 		return True
 
 class minimize(object):
-	def __init__(self, optimizer, step_len=0.05,  
-				maxIter=10, ftol=1e-2, gtol=1e-3, 
+	def __init__(self, optimizer,  maxIter=10, ftol=1e-2, gtol=1e-3, 
+				log_path = './log',
 				save_model_freq=10, 
 				save_grad_freq=10):
 
+		assert optimizer.name in ['LBFGS', 'NLCG', 'steepest descent']
 
 		self.optimizer = optimizer
 		self.line_searcher = line_searcher
@@ -29,8 +31,7 @@ class minimize(object):
 			self.const_step_len = True
 
 	def run(self, m, geometry, obs_data, misfit_func, 
-			precond=True, mask=None, bounds=None,
-			log_path='.'):
+			precond=True, mask=None, bounds=None):
 		iter_count = 0
 		while iter_count <= self.maxIter:
 			print('Starting iteration', iter_count)
@@ -79,6 +80,8 @@ class minimize(object):
 			m = m + alpha * p
 			self.finalize(m, g, fval, fval_try, iter_count)
 			print('')
+
+		return m
 
 	def finalize(self, m, g, fk, fkp1, iter_count):
 		if divides(iter_count, self.save_model_freq):

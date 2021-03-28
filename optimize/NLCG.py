@@ -16,13 +16,17 @@ class NLCG(base):
 		self.max_call = max_call
 		self.thresh = thresh
 
+	def name(self):
+		return 'NLCG'
+
 	def setup(self):
 		super(NLCG, self).setup()
 
 		self.nlcg = nlcg( max_call=self.max_call, thresh=self.thresh)
 
-	def compute_direction(self, m_new, g_new):
-		p_new, self.restarted = self.nlcg.compute_direction(m_new, g_new)
+	def compute_direction(self, m, g):
+		p, self.restarted = self.nlcg.compute_direction(m, g)
+		return p
 
 	def restart(self):
 		super(NLCG, self).restart()

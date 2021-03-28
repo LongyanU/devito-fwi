@@ -17,6 +17,9 @@ class LBFGS(base):
 		self.max_call = max_call
 		self.thresh = thresh
 
+	def name(self):
+		return 'LBFGS'
+
 	def setup(self):
 		super(LBFGS, self).setup()
 
@@ -24,8 +27,9 @@ class LBFGS(base):
 					max_call=self.max_call,
 					thresh=self.thresh)
 
-	def compute_direction(self, m_new, g_new):
-		p_new, self.restarted = self.lbfgs.compute_direction(m_new, g_new)
+	def compute_direction(self, m, g):
+		p, self.restarted = self.lbfgs.compute_direction(m, g)
+		return p
 
 	def restart(self):
 		super(LBFGS, self).restart()

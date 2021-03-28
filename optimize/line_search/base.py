@@ -104,9 +104,9 @@ class Base(object):
 class Writer(object):
     """ Utility for writing one or more columns to text file
     """
-    def __init__(self, path='./output.optim'):
+    def __init__(self, path='.'):
         self.iter = 0
-        self.filename = abspath(path)
+        self.filename = os.path.join(path, 'optim_info')
 
         self.write_header()
 
