@@ -60,12 +60,12 @@ if __name__=='__main__':
 
 	# Setup velocity model
 	shape = (300, 106)      # Number of grid points (nx, nz).
-	spacing = (25., 25.)    # Grid spacing in m. The domain size is now 1km by 1km.
+	spacing = (30., 30.)    # Grid spacing in m. The domain size is now 1km by 1km.
 	origin = (0, 0)         # Need origin to define relative source and receiver locations.
 	space_order = 8
 	nbl = 40
 	free_surface = False
-	dt = 2.
+	dt = 2.95
 
 	true_vp = np.fromfile("./model_data/SMARMN/vp.true", dtype=np.float32).reshape(shape)/1000
 	smooth_vp = np.fromfile("./model_data/SMARMN/vp.smooth_20", dtype=np.float32).reshape(shape)/1000
