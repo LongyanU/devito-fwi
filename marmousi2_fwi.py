@@ -183,9 +183,9 @@ if __name__=='__main__':
 	"""
 	tic = time()
 	optimizer = LBFGS(memory=10, ls_method='Bracket', step_len_init=args.steplen, max_ls=args.maxls,
-					log_path=os.path.join(result_dir, 'log'))
+					log_path=os.path.join(result_dir, 'log'+str(misfit_type)))
 	minimizer = minimize(optimizer, maxIter=maxiter, ftol=ftol, gtol=gtol, 
-					log_path=os.path.join(result_dir, 'log'))
+					log_path=os.path.join(result_dir, 'log'+str(misfit_type)))
 
 	m = minimizer.run(m0, geometry0, obs, misfit_func, None, precond, bathy_mask, bounds)
 
