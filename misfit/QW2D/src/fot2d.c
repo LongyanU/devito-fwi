@@ -580,7 +580,7 @@ float compute_l2_fot2d(float *mu, float *nu, float *phi, float *dual, float *rho
 		value = compute_w2(phi, dual, mu, nu, n1, n2);
 		sigma = step_update(sigma, value, oldValue, gradSq, scaleUp, scaleDown, upper, lower);		
 		oldValue = value;
-		sigma = fmax(sigma, .05);		
+		// sigma = fmax(sigma, .01);		
 		values[i] = value;
 		grad_norms[i] = gradSq;
 		if(verbose){

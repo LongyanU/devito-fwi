@@ -69,6 +69,6 @@ int main(int argc, char **argv){
 	free(syn);
 	free(obs);
 	free(adj);
-
+	destroy_fotSpace_2d(&otspace);
 	return 0;
 }
