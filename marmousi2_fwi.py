@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 
 from fwi import Filter, fm_multi, fwi_obj_multi, fwi_loss
 from misfit import least_square, qWasserstein
+from optimize import LBFGS, NLCG, SteepestDescent
+from minimize import minimize
 
 import argparse, os, shutil
 from time import time
@@ -27,6 +29,8 @@ parser.add_argument('--ftol', type=float, default=1e-2, help='Optimizing loss to
 parser.add_argument('--gtol', type=float, default=1e-4, help='Optimizing gradient norm tolerance')
 parser.add_argument('--nsrc', type=int, default=21, help='number of shots')
 parser.add_argument('--maxiter', type=int, default=500, help='FWI iteration')
+parser.add_argument('--steplen', type=float, default=0.05, help='initial step length for line search')
+parser.add_argument('--maxls', type=int, default=5, help='max number of line search in each iteration')
 
 if __name__=='__main__':
 	# Parse argument
@@ -49,7 +53,7 @@ if __name__=='__main__':
 		'\t Result dir: %s \t Misfit function: %d \t Precondition: %d\n'%(result_dir, misfit_type, precond), 
 		'\t Use mask: %d \t Filtering source: %d \t Resample rate: %f\n'%(use_bathy, use_filter, resample_dt),
 		'\t ftol: %e \t gtol: %e \t nsrc: %d\n'%(ftol, gtol, nsources),
-		'\t maxiter:%d\n'%(maxiter),		
+		'\t maxiter:%d \t maxls: %d \t init step length: %.3f\n'%(maxiter, args.maxls, args.steplen),	
 		'-------------------------------------------------'
 		)
 
@@ -169,8 +173,7 @@ if __name__=='__main__':
 	# ftol = 2e-2 converge when |fk - fkp1|/max(|fk|, |fkp1|, 1) < ftol
 	# gtol = 1e-4	
 	# for Wasserstein loss, it is always very small (~1e-6) depending on problems
-	maxls = 5
-	L = 10
+
 	"""
 	scipy.optimize.minimize(fun, x0, args=(), method='L-BFGS-B', jac=None, 
 		bounds=None, tol=None, callback=None, 
@@ -179,18 +182,17 @@ if __name__=='__main__':
 		'iprint': - 1, 'maxls': 20, 'finite_diff_rel_step': None})
 	"""
 	tic = time()
-	result = optimize.minimize(fwi_loss, m0, 
-				args=(geometry0, obs, misfit_func, None, bathy_mask, precond), 
-				method='L-BFGS-B', jac=True, 
-	    		callback=fwi_callback, bounds=bounds, 
-	    		options={'ftol':ftol, 'maxiter':maxiter, 'disp':True,
-	    				 'maxcor': L,
-	    				'maxls':maxls, 'gtol':gtol, 'iprint':1,
-	    		})
+	optimizer = LBFGS(memory=10, ls_method='Bracket', step_len_init=args.steplen, max_ls=args.maxls,
+					log_path=os.path.join(result_dir, 'log'))
+	minimizer = minimize(optimizer, maxIter=maxiter, ftol=ftol, gtol=gtol, 
+					log_path=os.path.join(result_dir, 'log'))
+
+	m = minimizer.run(m0, geometry0, obs, misfit_func, None, precond, bathy_mask, bounds)
+
 	toc = time()
 	print(f'\n Elapsed time: {toc-tic:.2f}s')
 	# Plot FWI result
-	vp = 1.0/np.sqrt(result['x'].reshape(shape))
+	vp = 1.0/np.sqrt(m.reshape(shape))
 
 	vp.tofile(os.path.join(result_dir, 
 		"marmousi2_result_misfit_"+str(misfit_type)+('_filtered' if use_filter else '')))
