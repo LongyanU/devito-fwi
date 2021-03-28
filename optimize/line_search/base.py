@@ -1,6 +1,5 @@
 
-
-from os.path import abspath
+import os
 import numpy as np
 
 def count_zeros(a):
@@ -27,7 +26,7 @@ class Base(object):
     def __init__(self,
                 step_count_max=10,
                 step_len_max=np.inf,
-                path=abspath('.')):
+                path='.'):
 
         # maximum number of trial steps
         self.step_count_max = step_count_max
@@ -43,6 +42,7 @@ class Base(object):
         self.gtg = []
         self.gtp = []
 
+    @property
     def name(self):
         return 'constant'
 
@@ -107,6 +107,9 @@ class Writer(object):
     def __init__(self, path='.'):
         self.iter = 0
         self.filename = os.path.join(path, 'optim_info')
+
+        if os.path.exists(self.filename):
+            os.remove(self.filename)
 
         self.write_header()
 

@@ -1,5 +1,6 @@
 
-from optimizer import lbfgs
+import numpy as np
+from .optimizer import lbfgs
 from .base import base
 
 class LBFGS(base):
@@ -16,16 +17,22 @@ class LBFGS(base):
 		self.memory = memory
 		self.max_call = max_call
 		self.thresh = thresh
-
+		
+	@property
 	def name(self):
 		return 'LBFGS'
+
+	@property
+	def call_count(self):
+		return self.lbfgs.call_count
 
 	def setup(self):
 		super(LBFGS, self).setup()
 
 		self.lbfgs = lbfgs(memory=self.memory, 
 					max_call=self.max_call,
-					thresh=self.thresh)
+					thresh=self.thresh,
+					path=self.log_path)
 
 	def compute_direction(self, m, g):
 		p, self.restarted = self.lbfgs.compute_direction(m, g)

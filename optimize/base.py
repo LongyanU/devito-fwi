@@ -1,7 +1,7 @@
 
 import numpy as np
-from os.path import join, abspath, exists
-import line_search 
+import os
+from . import line_search 
 from .math import angle
 
 class base(object):
@@ -26,7 +26,7 @@ class base(object):
 	def __init__(self, line_search_method='Bracket', max_ls=10, 
 					step_len_init=None, step_len_max=None, 
 					log_path='.', verbose=1):
-		assert ls_method in ['Backtrack', 'Bracket']
+		assert line_search_method in ['Backtrack', 'Bracket']
 		self.line_search_method = line_search_method
 		self.max_ls = max_ls
 		self.log_path = log_path
@@ -34,8 +34,13 @@ class base(object):
 		self.step_len_max = step_len_max
 		self.verbose = verbose
 		self.restarted = 0
-
+		
+	@property
 	def name(self):
+		raise NotImplementedError("")
+
+	@property
+	def call_count(self):
 		raise NotImplementedError("")
 
 	def setup(self):
@@ -46,6 +51,7 @@ class base(object):
 				step_count_max=self.max_ls, path=self.log_path
 			)
 		self.writer = Writer(self.log_path)
+		self.check_path()
 
 	def compute_direction(self, m, g):
 
@@ -72,7 +78,7 @@ class base(object):
 
 		return alpha
 
-	def update_search(self, fval):
+	def update_search(self, alpha, fval):
 		""" Updates line search status and step length
 
 			Status codes
@@ -80,7 +86,7 @@ class base(object):
 				status == 0 : not finished
 				status < 0  : failed
 		"""		
-		alpha, status = self.line_search.update(self.alpha, fval)
+		alpha, status = self.line_search.update(alpha, fval)
 
 		return alpha, status
 
@@ -92,7 +98,7 @@ class base(object):
 		self.writer('factor', -dot(g, g)**-0.5 * (f[1]-f[0])/(x[1]-x[0]))
 		self.writer('gradient_norm_L1', np.linalg.norm(g, 1))
 		self.writer('gradient_norm_L2', np.linalg.norm(g, 2))
-		self.writer('misfit', f[0])
+		self.writer('fval', f[0])
 		self.writer('restarted', self.restarted)
 		self.writer('slope', (f[1]-f[0])/(x[1]-x[0]))
 		self.writer('step_count', self.line_search.step_count)
@@ -101,6 +107,38 @@ class base(object):
 
 		self.line_search.writer.newline()
 
+
+	def check_path(self):
+		factor_file = os.path.join(self.log_path, 'factor')
+		if os.path.exists(factor_file):
+			os.remove(factor_file)
+		gradient_norm_file1 = os.path.join(self.log_path, 'gradient_norm_L1')
+		if os.path.exists(gradient_norm_file1):
+			os.remove(gradient_norm_file1)
+		gradient_norm_file2 = os.path.join(self.log_path, 'gradient_norm_L2')
+		if os.path.exists(gradient_norm_file2):
+			os.remove(gradient_norm_file2)
+		fval_file = os.path.join(self.log_path, 'fval')
+		if os.path.exists(fval_file):
+			os.remove(fval_file)
+		restart_file = os.path.join(self.log_path, 'restarted')
+		if os.path.exists(restart_file):
+			os.remove(restart_file)
+		slope_file = os.path.join(self.log_path, 'slope')
+		if os.path.exists(slope_file):
+			os.remove(slope_file)		
+		step_count_file = os.path.join(self.log_path, 'step_count')
+		if os.path.exists(step_count_file):
+			os.remove(step_count_file)
+		sim_count_file = os.path.join(self.log_path, 'sim_count')
+		if os.path.exists(sim_count_file):
+			os.remove(sim_count_file)				
+		step_length_file = os.path.join(self.log_path, 'step_length')
+		if os.path.exists(step_length_file):
+			os.remove(step_length_file)	
+		theta_file = os.path.join(self.log_path, 'theta')
+		if os.path.exists(theta_file):
+			os.remove(theta_file)
 
 	def retry_status(self, g, p):
 		""" Determines if restart is worthwhile
@@ -118,13 +156,12 @@ class base(object):
 			return 1
 
 
-	def restart(self, g):
+	def restart(self):
 		""" Restarts nonlinear optimization algorithm
 		Keeps current position in model space, but discards history of
 		nonlinear optimization algorithm in an attempt to recover from
 		numerical stagnation 
 		"""		
-		p = -g
 		self.line_search.clear_history()
 		self.restarted = 1
 		self.line_search.writer.iter -= 1
@@ -141,14 +178,13 @@ class Writer(object):
 	""" Utility for appending values to text files
 	"""
 	def __init__(self, path='.'):
-		self.path = abspath(path)
-		try:
+		self.path = path
+		if not os.path.exists(path):
 			os.makedirs(path)
-		except:
-			raise IOError
+
 		self.__call__('step_count', 0)
 
 	def __call__(self, filename, val):
-		fullfile = join(self.path, filename)
+		fullfile = os.path.join(self.path, filename)
 		with open(fullfile, 'a') as f:
 			f.write('%e\n' % val)

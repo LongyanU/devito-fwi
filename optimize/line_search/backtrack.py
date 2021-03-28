@@ -19,6 +19,7 @@ class Backtrack(Bracket):
           status == 0 : not finished
           status < 0  : failed
     """
+    @property
     def name(self):
         return 'backtrack'
 

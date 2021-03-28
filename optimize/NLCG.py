@@ -1,6 +1,7 @@
 
+import numpy as np
 from .base import base
-from optimizer import nlcg
+from .optimizer import nlcg
 
 class NLCG(base):
 	"""Non-linear congugate gradient algorithm
@@ -16,13 +17,18 @@ class NLCG(base):
 		self.max_call = max_call
 		self.thresh = thresh
 
+	@property
 	def name(self):
 		return 'NLCG'
+
+	@property
+	def call_count(self):
+		return self.nlcg.call_count
 
 	def setup(self):
 		super(NLCG, self).setup()
 
-		self.nlcg = nlcg( max_call=self.max_call, thresh=self.thresh)
+		self.nlcg = nlcg(max_call=self.max_call, thresh=self.thresh)
 
 	def compute_direction(self, m, g):
 		p, self.restarted = self.nlcg.compute_direction(m, g)

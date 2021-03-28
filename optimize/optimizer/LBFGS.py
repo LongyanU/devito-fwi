@@ -1,4 +1,5 @@
 
+import os
 import numpy as np
 from ..math import angle
 from .base import Base
@@ -10,7 +11,7 @@ class lbfgs(Base):
 	conditions.
 	"""
 
-	def __init__(self, memory=10, thresh=0., max_call=np.inf):
+	def __init__(self, memory=10, thresh=0., max_call=np.inf, path='.'):
 		self.memory = memory
 		self.max_call = max_call
 		self.thresh = thresh
@@ -21,17 +22,21 @@ class lbfgs(Base):
 		self.g = None
 		self.m = None
 
+		self.Ypath = os.path.join(path, 'Y')
+		self.Spath = os.path.join(path, 'S')
+
 	def compute_direction(self, m, g):
 		""" Returns L-BFGS search direction
-		"""	
-		if self.call_count == 0:
+		"""
+		self.call_count += 1
+		if self.call_count == 1:
 			self.g = g
 			self.m = m
-			return -g
+			return -g, 0
 		elif self.call_count > self.max_call:
 			print('Restaring LBFGS... [periodic restart]')
 			self.restart()
-			return -g
+			return -g, 1
 
 		S, Y = self.update(m, g)
 		q = self.apply(g, S, Y)
@@ -42,9 +47,9 @@ class lbfgs(Base):
 		status = self.check_status(g, q)
 		if status != 0:
 			self.restart()
-			return -g
+			return -g, 1
 		else:
-			return -q
+			return -q, 0
 
 	def update(self, m, g):
 		""" Update L-BFGS algorithm history
@@ -55,14 +60,14 @@ class lbfgs(Base):
 		n = self.memory
 
 		if self.memory_used == 0:
-			S = np.memmap('LBFGS/S', mode='w+', dtype='float32', shape=(m, n))
-			Y = np.memmap('LBFGS/Y', mode='w+', dtype='float32', shape=(m, n))
+			S = np.memmap(self.Spath, mode='w+', dtype='float32', shape=(m, n))
+			Y = np.memmap(self.Ypath, mode='w+', dtype='float32', shape=(m, n))
 			S[:, 0] = s
 			Y[:, 0] = y
 			self.memory_used = 1
 		else:
-			S = np.memmap('LBFGS/S', mode='r+', dtype='float32', shape=(m, n))
-			Y = np.memmap('LBFGS/Y', mode='r+', dtype='float32', shape=(m, n))
+			S = np.memmap(self.Spath, mode='r+', dtype='float32', shape=(m, n))
+			Y = np.memmap(self.Ypath, mode='r+', dtype='float32', shape=(m, n))
 			S[:, 1:] = S[:, :-1]
 			Y[:, 1:] = Y[:, :-1]
 			S[:, 0] = s
@@ -77,8 +82,8 @@ class lbfgs(Base):
 		if S==[] or Y==[]:
 			m = len(q)
 			n = self.memory
-			S = np.memmap('LBFGS/S', mode='w+', dtype='float32', shape=(m, n))
-			Y = np.memmap('LBFGS/Y', mode='w+', dtype='float32', shape=(m, n))
+			S = np.memmap(self.Spath, mode='w+', dtype='float32', shape=(m, n))
+			Y = np.memmap(self.Ypath, mode='w+', dtype='float32', shape=(m, n))
 		# first matrix product
 		kk = self.memory_used
 		rh = np.zeros(kk)
@@ -105,8 +110,8 @@ class lbfgs(Base):
 		self.call_count = 0
 		self.memory_used = 0
 
-		S = np.memmap('LBFGS/S', mode='r+')
-		Y = np.memmap('LBFGS/Y', mode='r+')
+		S = np.memmap(self.Spath, mode='r+')
+		Y = np.memmap(self.Ypath, mode='r+')
 		S[:] = 0.
 		Y[:] = 0.
 

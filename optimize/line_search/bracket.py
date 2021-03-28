@@ -21,6 +21,7 @@ class Bracket(Base):
           status < 0  : failed
     """
 
+    @property
     def name(self):
         return 'bracket'
 

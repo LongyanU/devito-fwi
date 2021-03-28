@@ -24,7 +24,8 @@ class nlcg(Base):
 		self.g_old = self.g_new
 		self.p_old = self.p_new
 		self.g_new = g
-		if self.call_count == 0:
+		self.call_count += 1
+		if self.call_count == 1:
 			self.p_new = -g
 			return -g, 0
 		elif self.call_count > self.max_call:

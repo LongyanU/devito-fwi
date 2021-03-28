@@ -1,5 +1,4 @@
 
-from linear_search import Bracket, Backtrack
-from .base import SteepestDescent
+from .base import steepest_descent
 from .NLCG import nlcg
 from .LBFGS import lbfgs
