@@ -114,14 +114,18 @@ class minimize(object):
 		fr = abs(fk - fkp1)/max(abs(fk), abs(fkp1))
 		gr = np.max(np.abs(g))
 
-		if fr < self.ftol or gr < self.gtol:
-			print("Stopping crieria met. Done!")
+		# if fr < self.ftol or gr < self.gtol:
+		# 	print("Stopping crieria met. Done!")
+		# 	return 1
+		# else:
+		# 	return 0
+		if fkp1/self.f0 < self.ftol:
 			return 1
 		else:
 			return 0
 
 	def save_model(self, m, k):
-		v = v = 1. / np.sqrt(m)
+		v = 1. / np.sqrt(m)
 		path = os.path.join(self.log_path, 'model_est')
 		if not os.path.exists(path):
 			os.makedirs(path)
@@ -144,9 +148,9 @@ class minimize(object):
 	def check_path(self):
 		if not os.path.exists(self.log_path):
 			os.makedirs(self.log_path)
-		misfit_file = os.path.join(self.log_path, 'misfit')
-		if os.path.exists(misfit_file):
-			os.remove(misfit_file)
+		file = os.path.join(self.log_path, 'misfit')
+		if os.path.exists(file):
+			os.remove(file)
 
 	def write_count(self):
 		count = 0
