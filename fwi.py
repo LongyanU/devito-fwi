@@ -156,7 +156,7 @@ def fwi_obj_single(geometry, obs, misfit_func,
 	residual.data[:] = resample(residual_data, 
 					geometry.time_axis.time_values,
 					pred.time_values)[:]
-	illum, calc_grad = None, None
+	illum, crop_grad = None, None
 	if calc_grad:
 		grad = Function(name="grad", grid=geometry.model.grid)
 		solver.gradient(rec=residual, u=wfd, vp=geometry.model.vp, grad=grad)
