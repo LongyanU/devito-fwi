@@ -150,20 +150,6 @@ if __name__=='__main__':
 				bbox_inches='tight')
 		plt.clf()
 
-	model_err = []
-	def fwi_callback(xk):
-		m = 1. / (true_vp.reshape(-1).astype(np.float64))**2
-		k = len(model_err)
-		if k%10==0:
-			v = np.sqrt(1./xk)
-			v.tofile(os.path.join(result_dir, 
-				'marmousi_iter'+str(k)+'_'+str(misfit_type)+('_filtered' if use_filter else '')))
-			plot_image(v.reshape(shape), cmap='jet', show=False)
-			plt.savefig(os.path.join(result_dir, 
-					'marmousi_iter'+str(k)+'_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
-					bbox_inches='tight')
-			plt.clf()
-		model_err.append(np.linalg.norm((xk-m)/m))	
 	# Box contraints
 	vmin = 1.5    # do not allow velocities slower than water
 	vmax = 5.2

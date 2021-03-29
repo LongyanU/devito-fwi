@@ -137,12 +137,6 @@ if __name__=='__main__':
 				'circle_1st_grad_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
 				bbox_inches='tight')
 		plt.clf()
-	model_err = []
-	def fwi_callback(xk):
-		nbl = true_model.nbl
-		v = true_model.vp.data[nbl:-nbl, nbl:-nbl]
-		m = 1. / (v.reshape(-1).astype(np.float64))**2
-		model_err.append(np.linalg.norm((xk-m)/m))
 
 	# Box contraints
 	vmin = 2.5    # do not allow velocities slower than water
