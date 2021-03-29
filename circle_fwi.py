@@ -171,7 +171,7 @@ if __name__=='__main__':
 	minimizer = minimize(optimizer, maxIter=maxiter, ftol=ftol, gtol=gtol, 
 					log_path=os.path.join(result_dir, 'log'+str(misfit_type)))
 
-	m = minimizer.run(m0, geometry0, obs, misfit_func, None, precond, bathy_mask, bounds)
+	m = minimizer.run(m0, geometry0, obs, misfit_func, None, bathy_mask,precond,  bounds)
 
 	toc = time()
 	print(f'\n Elapsed time: {toc-tic:.2f}s')	
