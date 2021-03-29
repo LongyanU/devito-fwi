@@ -161,8 +161,8 @@ class bfmx(object):
 	def solve(self):
 		try:
 			f = open(os.path.join(self.path, 'bfm.log'), 'w')
-			subprocess.run([self.solver+' '+str(self.n1)+' '+
-						str(self.n2)+' '+str(self.num_steps)+' '+
+			subprocess.run([self.solver+' '+str(self.n2)+' '+
+						str(self.n1)+' '+str(self.num_steps)+' '+
 						str(self.step_scale)+' '+str(1)+' '+self.path],
 						shell=True, stdout=f, check=True)
 		except subprocess.CalledProcessError as err:
