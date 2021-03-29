@@ -68,6 +68,9 @@ if __name__=='__main__':
 	smooth_vp = smooth_vp[:, 10:]
 	shape = true_vp.shape
 
+	# constant water model
+	constant_vp = np.ones(shape) * 1.5
+
 	bathy_mask = np.ones(shape, dtype=np.float32)
 	bathy_mask[:, :5] = 0
 	if not use_bathy:
@@ -79,7 +82,9 @@ if __name__=='__main__':
 	init_model = Model(origin=origin, spacing=spacing, 
 					shape=shape, space_order=space_order, vp=smooth_vp, 
 					nbl=nbl, fs=free_surface, dt=dt)
-
+	constant_model = Model(origin=origin, spacing=spacing, 
+					shape=shape, space_order=space_order, vp=constant_vp, 
+					nbl=nbl, fs=free_surface, dt=dt)
 	# Set up acquisiton geometry
 	t0 = 0.
 	tn = 4500. 
@@ -104,15 +109,15 @@ if __name__=='__main__':
 					f0=f0, src_type='Ricker', filter=filt_func)
 	geometry0 = AcquisitionGeometry(init_model, rec_coordinates, src_coordinates, t0, tn, 
 					f0=f0, src_type='Ricker', filter=filt_func)
-	if resample_dt == 0:
-		resample_dt = dt	
-	geometry1.resample(resample_dt)
-	geometry0.resample(resample_dt)
+	geometry2 = AcquisitionGeometry(constant_model, rec_coordinates, src_coordinates, t0, tn, 
+					f0=f0, src_type='Ricker', filter=filt_func)	
+
 	#plot_velocity(true_model, source=geometry1.src_positions, receiver=geometry1.rec_positions[::4, :])
 
 	obs = fm_multi(geometry1, save=False)
 	syn = fm_multi(geometry0, save=False)
-
+	direct_wave = fm_multi(geometry2, save=False)
 	for i in range(nsources):
 		obs[i].data[:].astype(np.float32).tofile(os.path.join(result_dir, 'data/obs'+str(i)))
 		syn[i].data[:].astype(np.float32).tofile(os.path.join(result_dir, 'data/syn'+str(i)))
+		direct_wave[i].data[:].astype(np.float32).tofile(os.path.join(result_dir, 'data/dw'+str(i)))
