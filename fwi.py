@@ -142,7 +142,7 @@ def fwi_obj_single(geometry, obs, misfit_func,
 		obs = deepcopy(obs).resample(resample_dt) # Important: use deepcopy to avoid changing the orignal data
 		pred = pred.resample(resample_dt)
 		if direct_wave is not None:
-			dw = deepcopy(direct_wave).resample(direct_wave)	
+			dw = deepcopy(direct_wave).resample(resample_dt)	
 	syn_data = pred.data
 	obs_data = obs.data
 	if direct_wave is not None:
