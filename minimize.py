@@ -43,6 +43,8 @@ class minimize(object):
 			if iter_count == 0:
 				self.f0 = fval 
 			self.save_misfit(fval, g)
+			if divides(iter_count, self.save_grad_freq):
+				self.save_gradient(g, iter_count)			
 			# compute search direction
 			print('\t Computing search direction')
 			p = self.optimizer.compute_direction(m, g)
@@ -101,9 +103,6 @@ class minimize(object):
 		self.write_count()
 		if divides(iter_count, self.save_model_freq):
 			self.save_model(m, iter_count)
-		if divides(iter_count, self.save_grad_freq):
-			self.save_gradient(g, iter_count)
-		
 		status = self.check_stopping_criteria(fk, fkp1, g)
 		return status
 
