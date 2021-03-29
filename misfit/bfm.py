@@ -155,8 +155,8 @@ class bfmx(object):
 
 	def setup(self, f, g):
 		self.n1, self.n2 = f.shape
-		f.astype(np.float32).transpose().tofile(os.path.join(self.path, 'syn_data'))
-		g.astype(np.float32).transpose().tofile(os.path.join(self.path, 'obs_data'))
+		f.astype(np.float32).tofile(os.path.join(self.path, 'syn_data'))
+		g.astype(np.float32).tofile(os.path.join(self.path, 'obs_data'))
 
 	def solve(self):
 		try:
@@ -175,7 +175,7 @@ class bfmx(object):
 			f.close()
 
 		grad = np.fromfile(os.path.join(self.path, 'grad_data'), dtype=np.float32)
-		grad = grad.reshape(self.n2, self.n1).transpose()
+		grad = grad.reshape(self.n1, self.n2)
 		loss = np.loadtxt(os.path.join(self.path, 'loss'))
 
 		os.remove(os.path.join(self.path, 'syn_data'))
