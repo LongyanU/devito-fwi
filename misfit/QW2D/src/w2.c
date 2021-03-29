@@ -21,11 +21,14 @@ int main(int argc, char **argv){
 	float *obs = malloc(n1 * n2 * sizeof(float));
 	float *syn = malloc(n1 * n2 * sizeof(float));
 	float *adj = malloc(n1 * n2 * sizeof(float));
-	memset(adj, 1, n1 * n2 * sizeof(float));
+	int i;
+	for(i=0; i<n1*n2; i++)
+		adj[i] = 1.0;
+
 	FILE *fp;
 
 	// Create local BFM solver
-	struct fotSpace otspace = {0};
+	struct fotSpace otspace;
 	otspace.nIter = niter;
 	otspace.step_scale = step_scale;
 	alloc_fotSpace_2d(&otspace, n1, n2);
