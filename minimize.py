@@ -31,14 +31,14 @@ class minimize(object):
 		self.optimizer.setup()
 		self.check_path()
 
-	def run(self, m, geometry, obs_data, misfit_func, filter_func, 
-			precond=True, mask=None, bounds=None):
+	def run(self, m, geometry, obs_data, misfit_func, direct_wave=None, 
+			mask=None, precond=True, bounds=None):
 		iter_count = 0
 		while iter_count < self.maxIter:
 			print('Starting iteration', iter_count+1)
 			# compute gradient
 			print('\t Computing gradient')			
-			fval, g = fwi_loss(m, geometry, obs_data, misfit_func, filter_func, mask, 
+			fval, g = fwi_loss(m, geometry, obs_data, misfit_func, direct_wave, mask, 
 						precond)
 			if iter_count == 0:
 				self.f0 = fval 
@@ -59,7 +59,7 @@ class minimize(object):
 					m_temp = self.apply_bounds(m + alpha*p, bounds)
 
 					fval_try, _ = fwi_loss(m_temp, geometry, obs_data, 
-								misfit_func, filter_func, mask, precond, calc_grad=False)
+								misfit_func, direct_wave, mask, precond, calc_grad=False)
 					print('\t fval_try: %10.3e' % fval_try)
 					alpha, status = self.optimizer.update_search(alpha, fval_try)
 				
