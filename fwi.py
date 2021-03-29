@@ -170,7 +170,7 @@ def fwi_obj_single(geometry, obs, misfit_func,
 		illum = (wfd.data * wfd.data).sum(axis=0)[nbl:-nbl, nbl:-nbl]
 		illum = fix_source_illumination(geometry, illum)
 
-	return fval, crop_grad, residual, illum
+	return fval, crop_grad, residual.data, illum
 
 def fwi_obj_multi(geometry, obs, misfit_func, direct_wave=None, 
 			mask=None, precond=True, 
@@ -179,15 +179,17 @@ def fwi_obj_multi(geometry, obs, misfit_func, direct_wave=None,
 	grad = np.zeros(geometry.model.shape)
 	illum = np.zeros(geometry.model.shape)
 	nbl = geometry.model.nbl
+	residuals = []
 	for i in range(geometry.nsrc):
 		# Geometry for current shot
 		geom_i = AcquisitionGeometry(geometry.model, geometry.rec_positions, 
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type, 
 					filter=geometry._filter)
-		fval_, grad_, _, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
+		fval_, grad_, res_, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
 							direct_wave[i], geometry.dt, calc_grad)
 		fval += fval_
+		residuals += [res_]
 		if calc_grad:
 			grad += grad_
 			illum += illum_
@@ -196,7 +198,7 @@ def fwi_obj_multi(geometry, obs, misfit_func, direct_wave=None,
 			grad  /= np.sqrt(illum + 1e-30)
 		if mask is not None:
 			grad *= mask 
-	return fval, grad
+	return fval, grad.reshape(-1).astype(np.float64), residuals
 
 def fwi_obj_multi_parallel(client, geometry, obs, misfit_func, 
 			direct_wave=None, mask=None, precond=True, calc_grad=False):
@@ -234,8 +236,8 @@ def fwi_loss(x, geometry, obs, misfit_func,
 	v = 1. / np.sqrt(x.reshape(geometry.model.shape))
 	geometry.model.update('vp', v.reshape(geometry.model.shape))
 	
-	fval, grad = fwi_obj_multi(geometry, obs, misfit_func, 
+	fval, grad, residuals = fwi_obj_multi(geometry, obs, misfit_func, 
 						direct_wave, mask, precond, calc_grad)
 
-	return fval, grad.flatten().astype(np.float64)
+	return fval, grad, residuals
 

@@ -15,8 +15,9 @@ def divides(i, j):
 class minimize(object):
 	def __init__(self, optimizer,  maxIter=10, ftol=1e-2, gtol=1e-3, 
 				log_path = './log',
-				save_model_freq=10, 
-				save_grad_freq=10):
+				save_model_freq=5, 
+				save_grad_freq=5, 
+				save_res_freq=10):
 
 		assert optimizer.name in ['LBFGS', 'NLCG', 'SteepestDescent']
 
@@ -27,6 +28,7 @@ class minimize(object):
 		self.log_path = log_path
 		self.save_model_freq = save_model_freq
 		self.save_grad_freq = save_grad_freq
+		self.save_res_freq = save_res_freq
 
 		self.optimizer.setup()
 		self.check_path()
@@ -38,13 +40,15 @@ class minimize(object):
 			print('Starting iteration', iter_count+1)
 			# compute gradient
 			print('\t Computing gradient')			
-			fval, g = fwi_loss(m, geometry, obs_data, misfit_func, direct_wave, mask, 
+			fval, g, res = fwi_loss(m, geometry, obs_data, misfit_func, direct_wave, mask, 
 						precond)
 			if iter_count == 0:
 				self.f0 = fval 
 			self.save_misfit(fval, g)
 			if divides(iter_count, self.save_grad_freq):
-				self.save_gradient(g, iter_count)			
+				self.save_gradient(g, iter_count)
+			if divides(iter_count, self.save_res_freq):
+				self.save_residual(res, iter_count)			
 			# compute search direction
 			print('\t Computing search direction')
 			p = self.optimizer.compute_direction(m, g)
@@ -60,7 +64,7 @@ class minimize(object):
 
 					m_temp = self.apply_bounds(m + alpha*p, bounds)
 
-					fval_try, _ = fwi_loss(m_temp, geometry, obs_data, 
+					fval_try, _, _ = fwi_loss(m_temp, geometry, obs_data, 
 								misfit_func, direct_wave, mask, precond, calc_grad=False)
 					print('\t fval_try: %10.3e' % fval_try)
 					alpha, status = self.optimizer.update_search(alpha, fval_try)
@@ -143,6 +147,14 @@ class minimize(object):
 			fmt = '%10.3e  %10.3e\n'
 			f.write(fmt % (fval, norm_g))			
 		print('\t\t f: %10.3e \t |g|: %10.3e'%(fval, norm_g))	
+
+	def save_residual(self, res, k):
+		path = os.path.join(self.log_path, 'residual', str(k))
+		if not os.path.exists(path):
+			os.makedirs(path)
+		for i in range(len(res)):
+			r = res[i]
+			r.astype(np.float32).tofile(os.path.join(path, 'res'+str(i)))
 
 	def check_path(self):
 		if not os.path.exists(self.log_path):
