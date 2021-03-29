@@ -78,7 +78,6 @@ class minimize(object):
 							print(' Line search failed\n\n Aborting...')
 							do_line_search = False
 							return m
-			iter_count += 1
 			# update the model
 			m = self.apply_bounds(m + alpha*p, bounds)
 
@@ -86,6 +85,7 @@ class minimize(object):
 			print('')
 			if stop:
 				return m
+			iter_count += 1	
 		return m
 
 	def apply_bounds(self, x, bounds):
