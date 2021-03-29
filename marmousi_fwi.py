@@ -28,7 +28,7 @@ parser.add_argument('--resample', type=float, default=0., help='resample dt, def
 parser.add_argument('--ftol', type=float, default=1e-5, help='Optimizing loss tolerance')
 parser.add_argument('--gtol', type=float, default=1e-10, help='Optimizing gradient norm tolerance')
 parser.add_argument('--nsrc', type=int, default=29, help='number of shots')
-parser.add_argument('--maxiter', type=int, default=300, help='FWI iteration')
+parser.add_argument('--maxiter', type=int, default=200, help='FWI iteration')
 parser.add_argument('--steplen', type=float, default=0.1, help='initial step length for line search')
 parser.add_argument('--maxls', type=int, default=5, help='max number of line search in each iteration')
 

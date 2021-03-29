@@ -27,8 +27,8 @@ parser.add_argument('--filter', type=int, default=0, help='filtering data')
 parser.add_argument('--resample', type=float, default=0., help='resample dt, default 0 will not resample')
 parser.add_argument('--ftol', type=float, default=1e-5, help='Optimizing loss tolerance')
 parser.add_argument('--gtol', type=float, default=1e-10, help='Optimizing gradient norm tolerance')
-parser.add_argument('--nsrc', type=int, default=21, help='number of shots')
-parser.add_argument('--maxiter', type=int, default=300, help='FWI iteration')
+parser.add_argument('--nsrc', type=int, default=31, help='number of shots')
+parser.add_argument('--maxiter', type=int, default=200, help='FWI iteration')
 parser.add_argument('--steplen', type=float, default=0.1, help='initial step length for line search')
 parser.add_argument('--maxls', type=int, default=5, help='max number of line search in each iteration')
 
@@ -67,7 +67,7 @@ if __name__=='__main__':
 	dt = 3.
 
 	true_vp = np.fromfile("./model_data/SMARM2/vp.true", dtype=np.float32).reshape(shape)/1000
-	smooth_vp = np.fromfile("./model_data/SMARM2/vp.smooth_10", dtype=np.float32).reshape(shape)/1000
+	smooth_vp = np.fromfile("./model_data/SMARM2/vp.smooth_20", dtype=np.float32).reshape(shape)/1000
 
 	# Remove some water layer
 	true_vp = true_vp[:, 10:]
@@ -91,7 +91,6 @@ if __name__=='__main__':
 	tn = 4500. 
 	f0 = 0.007
 	# Set up source geometry, but define 5 sources instead of just one.
-	nsources = 31
 	src_coordinates = np.empty((nsources, 2))
 	src_coordinates[:, 0] = np.linspace(0, true_model.domain_size[0], num=nsources)
 	src_coordinates[:, -1] = 2*spacing[0]  # Source depth
@@ -165,7 +164,7 @@ if __name__=='__main__':
 	# Box contraints
 	vmin = 1.5    # do not allow velocities slower than water
 	vmax = 5.0
-	bounds = [(1.0/vmax**2, 1.0/vmin**2) for _ in range(np.prod(shape))]    # in [s^2/km^2]
+	bounds = [1.0/vmax**2, 1.0/vmin**2]    # in [s^2/km^2]
 
 	m0 = 1./(smooth_vp.reshape(-1).astype(np.float64))**2
 
