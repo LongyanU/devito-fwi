@@ -141,7 +141,7 @@ if __name__=='__main__':
 	# Gradient check
 	if check_gradient:
 		f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
-						None, bathy_mask, precond)
+						None, bathy_mask, precond, True)
 		g.tofile(os.path.join(result_dir, 
 				'marmousi_1st_grad_'+str(misfit_type)+('_filtered' if use_filter else '')))
 		plot_image(g.reshape(shape), cmap='bwr', show=False)
@@ -181,15 +181,13 @@ if __name__=='__main__':
 	print(f'\n Elapsed time: {toc-tic:.2f}s')
 	# Plot FWI result
 	vp = 1.0/np.sqrt(m.reshape(shape))
-
 	vp.tofile(os.path.join(result_dir, 
 				"marmousi_result_misfit_"+str(misfit_type)+('_filtered' if use_filter else '')))
-	file = open(os.path.join(result_dir, 
-				"marmousi_model_err_info_"+str(misfit_type)+('_filtered' if use_filter else '')+'.txt'), "w")
-	for item in model_err:
-		if item is not None:
-			file.write("%s\n" % str(item))
-	file.close()
+	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet", show=False)
+	plt.savefig(os.path.join(result_dir, 
+			'marmousi_inverted_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
+			bbox_inches='tight')
+	plt.clf()
 	try:
 		useful_info = []
 		with open('./nohup.out', 'r') as file:
@@ -206,8 +204,3 @@ if __name__=='__main__':
 		shutil.move(nohup_file, os.path.join(result_dir, nohup_file))
 	except:
 		pass
-	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet", show=False)
-	plt.savefig(os.path.join(result_dir, 
-			'marmousi_inverted_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
-			bbox_inches='tight')
-	plt.clf()

@@ -20,7 +20,7 @@ parser.add_argument('--misfit', type=int, default=0, choices=[0, 1, 2],
 parser.add_argument('--precond', type=int, default=1, help='apply precondition')
 parser.add_argument('--odir', type=str, default='./result/circle', 
 			help='directory to output result')
-parser.add_argument('--bathy', type=int, default=1, help='apply bathy mask')
+parser.add_argument('--bathy', type=int, default=0, help='apply bathy mask')
 parser.add_argument('--check-gradient', type=int, default=0, 
 			help='check the gradient at 1st iteration')
 parser.add_argument('--filter', type=int, default=0, help='filtering data')
@@ -82,7 +82,7 @@ if __name__=='__main__':
 	t0 = 0.
 	tn = 1000. 
 	f0 = 0.010
-	resample_dt = 5
+
 	# Set up source geometry, but define 5 sources instead of just one.
 	nsources = 11
 	src_coordinates = np.empty((nsources, 2))
@@ -130,7 +130,7 @@ if __name__=='__main__':
 	# Gradient check
 	if check_gradient:
 		f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
-						None, bathy_mask, precond)
+						None, bathy_mask, precond, True)
 		g.tofile(os.path.join(result_dir, 'circle_1st_grad_'+str(misfit_type)))		
 		plot_image(g.reshape(shape), cmap='bwr', show=False)
 		plt.savefig(os.path.join(result_dir, 
@@ -174,13 +174,11 @@ if __name__=='__main__':
 
 	vp.tofile(os.path.join(result_dir, 
 			"circle_result_misfit_"+str(misfit_type)+('_filtered' if use_filter else '')))
-
-	file = open(os.path.join(result_dir, 
-			"circle_model_err_info_"+str(misfit_type)+('_filtered' if use_filter else '')+'.txt'), "w")
-	for item in model_err:
-		if item is not None:
-			file.write("%s\n" % str(item))
-	file.close()			
+	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet", show=False)
+	plt.savefig(os.path.join(result_dir, 
+			'circle_inverted_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
+			bbox_inches='tight')
+	plt.clf()			
 	try:
 		useful_info = []
 		with open('./nohup.out', 'r') as file:
@@ -197,8 +195,4 @@ if __name__=='__main__':
 		shutil.move(nohup_file, os.path.join(result_dir, nohup_file))
 	except:
 		pass
-	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet", show=False)
-	plt.savefig(os.path.join(result_dir, 
-			'circle_inverted_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
-			bbox_inches='tight')
-	plt.clf()
+

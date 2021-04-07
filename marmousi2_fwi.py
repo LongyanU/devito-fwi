@@ -69,16 +69,11 @@ if __name__=='__main__':
 	true_vp = np.fromfile("./model_data/SMARM2/vp.true", dtype=np.float32).reshape(shape)/1000
 	smooth_vp = np.fromfile("./model_data/SMARM2/vp.smooth_20", dtype=np.float32).reshape(shape)/1000
 
-	# Remove some water layer
-	true_vp = true_vp[:, 10:]
-	smooth_vp = smooth_vp[:, 10:]
-	shape = true_vp.shape
-
 	# constant water model
 	constant_vp = np.ones(shape) * 1.5
 
 	bathy_mask = np.ones(shape, dtype=np.float32)
-	bathy_mask[:, :5] = 0
+	bathy_mask[:, :15] = 0
 	if not use_bathy:
 		bathy_mask = None
 
@@ -134,7 +129,7 @@ if __name__=='__main__':
 
 	qWmetric1d = qWasserstein(gamma=1.01, method='1d')
 	qWmetric2d = qWasserstein(gamma=1.01, method='2d', 
-							num_steps=10, step_scale=1.)
+							num_steps=15, step_scale=4.)
 
 	if misfit_type == 0:
 		misfit_func = least_square
@@ -146,7 +141,7 @@ if __name__=='__main__':
 	# Gradient check
 	if check_gradient:
 		f, g = fwi_obj_multi(geometry0, obs, misfit_func, 
-						None, bathy_mask, precond)
+						None, bathy_mask, precond, True)
 		g.tofile(os.path.join(result_dir, 
 			'marmousi2_1st_grad_'+str(misfit_type)+('_filtered' if use_filter else '')))
 		plot_image(g.reshape(shape), cmap='bwr', show=False)
@@ -187,15 +182,14 @@ if __name__=='__main__':
 	print(f'\n Elapsed time: {toc-tic:.2f}s')
 	# Plot FWI result
 	vp = 1.0/np.sqrt(m.reshape(shape))
-
 	vp.tofile(os.path.join(result_dir, 
 		"marmousi2_result_misfit_"+str(misfit_type)+('_filtered' if use_filter else '')))
-	file = open(os.path.join(result_dir, 
-		"marmousi2_model_err_info_"+str(misfit_type)+('_filtered' if use_filter else '')+'.txt'), "w")
-	for item in model_err:
-		if item is not None:
-			file.write("%s\n" % str(item))
-	file.close()
+	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet", show=False)
+	plt.savefig(os.path.join(result_dir, 
+			'marmousi2_inverted_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
+			bbox_inches='tight')
+
+	plt.clf()
 	try:
 		useful_info = []
 		with open('./nohup.out', 'r') as file:
@@ -211,9 +205,3 @@ if __name__=='__main__':
 		shutil.move(nohup_file, os.path.join(result_dir, nohup_file))
 	except:
 		pass
-	plot_image(vp, vmin=vmin, vmax=vmax, cmap="jet", show=False)
-	plt.savefig(os.path.join(result_dir, 
-			'marmousi2_inverted_'+str(misfit_type)+('_filtered' if use_filter else '')+'.png'), 
-			bbox_inches='tight')
-
-	plt.clf()

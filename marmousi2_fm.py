@@ -63,11 +63,6 @@ if __name__=='__main__':
 	true_vp = np.fromfile("./model_data/SMARM2/vp.true", dtype=np.float32).reshape(shape)/1000
 	smooth_vp = np.fromfile("./model_data/SMARM2/vp.smooth_20", dtype=np.float32).reshape(shape)/1000
 
-	# Remove some water layer
-	true_vp = true_vp[:, 10:]
-	smooth_vp = smooth_vp[:, 10:]
-	shape = true_vp.shape
-
 	# constant water model
 	constant_vp = np.ones(shape) * 1.5
 
@@ -117,6 +112,7 @@ if __name__=='__main__':
 	obs = fm_multi(geometry1, save=False)
 	syn = fm_multi(geometry0, save=False)
 	direct_wave = fm_multi(geometry2, save=False)
+	print(obs[0].data.shape)
 	for i in range(nsources):
 		obs[i].data[:].astype(np.float32).tofile(os.path.join(result_dir, 'data/obs'+str(i)))
 		syn[i].data[:].astype(np.float32).tofile(os.path.join(result_dir, 'data/syn'+str(i)))

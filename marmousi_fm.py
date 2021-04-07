@@ -40,6 +40,13 @@ if __name__=='__main__':
 	resample_dt = args.resample
 	ftol = args.ftol
 	gtol = args.gtol
+	print('---------------- Parameter Setting ------------\n',
+		'\t Result dir: %s \t Misfit function: %d \t Precondition: %d\n'%(result_dir, misfit_type, precond), 
+		'\t Use mask: %d \t Filtering source: %d \t Resample rate: %.2f\n'%(use_bathy, use_filter, resample_dt),
+		'\t ftol: %e \t gtol: %e \t nsrc: %d\n'%(ftol, gtol, nsources),
+		'\t maxiter:%d \t maxls: %d \t init step length: %.3f\n'%(maxiter, args.maxls, args.steplen),	
+		'-------------------------------------------------'
+		)	
 	# Setup velocity model
 	shape = (300, 106)      # Number of grid points (nx, nz).
 	spacing = (30., 30.)    # Grid spacing in m. The domain size is now 1km by 1km.
@@ -100,6 +107,7 @@ if __name__=='__main__':
 	obs = fm_multi(geometry1, save=False)
 	syn = fm_multi(geometry0, save=False)
 	direct_wave = fm_multi(geometry2, save=False)
+	print(obs[0].data.shape)
 	for i in range(nsources):
 		obs[i].data[:].astype(np.float32).tofile(os.path.join(result_dir, 'data/obs'+str(i)))
 		syn[i].data[:].astype(np.float32).tofile(os.path.join(result_dir, 'data/syn'+str(i)))

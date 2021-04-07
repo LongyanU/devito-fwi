@@ -186,8 +186,12 @@ def fwi_obj_multi(geometry, obs, misfit_func, direct_wave=None,
 					geometry.src_positions[i, :], geometry.t0, geometry.tn, 
 					f0=geometry.f0, src_type=geometry.src_type, 
 					filter=geometry._filter)
-		fval_, grad_, res_, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
-							direct_wave[i], geometry.dt, calc_grad)
+		if direct_wave is not None:
+			fval_, grad_, res_, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
+								direct_wave[i], geometry.dt, calc_grad)
+		else:
+			fval_, grad_, res_, illum_ = fwi_obj_single(geom_i, obs[i], misfit_func, 
+								None, geometry.dt, calc_grad)			
 		fval += fval_
 		residuals += [res_]
 		if calc_grad:
